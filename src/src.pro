@@ -1,404 +1,137 @@
-#-------------------------------------------------
-#
-# Project created by QtCreator 2016-10-01T11:03:59
-#
-#-------------------------------------------------
+lessThan(QT_MAJOR_VERSION, 5): error("requires Qt 5 and above")
 
-QT       += core gui webenginewidgets webchannel network svg printsupport
+equals(QT_MAJOR_VERSION, 5):lessThan(QT_MINOR_VERSION, 12): error("requires Qt 5.12 and above")
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+QT += core gui widgets webenginewidgets webchannel network svg printsupport
+
+CONFIG -= qtquickcompiler
+
+unix:!mac:exists(/usr/bin/ld.gold) {
+    CONFIG += use_gold_linker
+}
 
 # Enable message log in release build
 DEFINES += QT_MESSAGELOGCONTEXT
 
-TARGET = VNote
+TARGET = vnote
 TEMPLATE = app
 
-RC_ICONS = resources/icons/vnote.ico
-ICON = resources/icons/vnote.icns
-
-TRANSLATIONS += translations/vnote_zh_CN.ts \
-                translations/vnote_ja.ts
-
-*-g++ {
-    QMAKE_CFLAGS_WARN_ON += -Wno-class-memaccess
-    QMAKE_CXXFLAGS_WARN_ON += -Wno-class-memaccess
-    QMAKE_CFLAGS += -Wno-class-memaccess
-    QMAKE_CXXFLAGS += -Wno-class-memaccess
+win32:CONFIG(release, debug|release) {
+    SRC_DESTDIR = $$OUT_PWD/release
+} else:win32:CONFIG(debug, debug|release) {
+    SRC_DESTDIR = $$OUT_PWD/debug
+} else {
+    SRC_DESTDIR = $$OUT_PWD
 }
 
-SOURCES += main.cpp\
-    vapplication.cpp \
-    vimagehosting.cpp \
-    vmainwindow.cpp \
-    vdirectorytree.cpp \
-    vnote.cpp \
-    vnotebook.cpp \
-    dialog/vnewdirdialog.cpp \
-    vconfigmanager.cpp \
-    vfilelist.cpp \
-    dialog/vnewfiledialog.cpp \
-    vedit.cpp \
-    vdocument.cpp \
-    utils/vutils.cpp \
-    vpreviewpage.cpp \
-    vstyleparser.cpp \
-    dialog/vnewnotebookdialog.cpp \
-    vmarkdownconverter.cpp \
-    dialog/vnotebookinfodialog.cpp \
-    dialog/vdirinfodialog.cpp \
-    dialog/vfileinfodialog.cpp \
-    veditoperations.cpp \
-    vmdeditoperations.cpp \
-    dialog/vinsertimagedialog.cpp \
-    vdownloader.cpp \
-    veditarea.cpp \
-    veditwindow.cpp \
-    vedittab.cpp \
-    voutline.cpp \
-    vsingleinstanceguard.cpp \
-    vdirectory.cpp \
-    vfile.cpp \
-    vnotebookselector.cpp \
-    vnofocusitemdelegate.cpp \
-    vmdedit.cpp \
-    dialog/vfindreplacedialog.cpp \
-    dialog/vsettingsdialog.cpp \
-    dialog/vdeletenotebookdialog.cpp \
-    dialog/vselectdialog.cpp \
-    vcaptain.cpp \
-    vopenedlistmenu.cpp \
-    vnavigationmode.cpp \
-    vorphanfile.cpp \
-    vcodeblockhighlighthelper.cpp \
-    vwebview.cpp \
-    vmdtab.cpp \
-    vhtmltab.cpp \
-    utils/vvim.cpp \
-    utils/veditutils.cpp \
-    vvimindicator.cpp \
-    vbuttonwithwidget.cpp \
-    vtabindicator.cpp \
-    dialog/vupdater.cpp \
-    dialog/vorphanfileinfodialog.cpp \
-    vtextblockdata.cpp \
-    utils/vpreviewutils.cpp \
-    dialog/vconfirmdeletiondialog.cpp \
-    vnotefile.cpp \
-    vattachmentlist.cpp \
-    dialog/vsortdialog.cpp \
-    vfilesessioninfo.cpp \
-    vtableofcontent.cpp \
-    utils/vmetawordmanager.cpp \
-    vmetawordlineedit.cpp \
-    dialog/vinsertlinkdialog.cpp \
-    vplaintextedit.cpp \
-    vimageresourcemanager.cpp \
-    vlinenumberarea.cpp \
-    veditor.cpp \
-    vmdeditor.cpp \
-    veditconfig.cpp \
-    vpreviewmanager.cpp \
-    vimageresourcemanager2.cpp \
-    vtextdocumentlayout.cpp \
-    vtextedit.cpp \
-    vsnippetlist.cpp \
-    vsnippet.cpp \
-    dialog/veditsnippetdialog.cpp \
-    utils/vimnavigationforwidget.cpp \
-    vtoolbox.cpp \
-    vinsertselector.cpp \
-    utils/vclipboardutils.cpp \
-    vpalette.cpp \
-    vbuttonmenuitem.cpp \
-    utils/viconutils.cpp \
-    lineeditdelegate.cpp \
-    dialog/vtipsdialog.cpp \
-    dialog/vcopytextashtmldialog.cpp \
-    vwaitingwidget.cpp \
-    utils/vwebutils.cpp \
-    vlineedit.cpp \
-    vcart.cpp \
-    vvimcmdlineedit.cpp \
-    vlistwidget.cpp \
-    vsimplesearchinput.cpp \
-    vstyleditemdelegate.cpp \
-    vtreewidget.cpp \
-    dialog/vexportdialog.cpp \
-    vexporter.cpp \
-    vsearcher.cpp \
-    vsearch.cpp \
-    vsearchresulttree.cpp \
-    vsearchengine.cpp \
-    vuniversalentry.cpp \
-    vlistwidgetdoublerows.cpp \
-    vdoublerowitemwidget.cpp \
-    vsearchue.cpp \
-    voutlineue.cpp \
-    vhelpue.cpp \
-    vlistfolderue.cpp \
-    dialog/vfixnotebookdialog.cpp \
-    vplantumlhelper.cpp \
-    vgraphvizhelper.cpp \
-    vlivepreviewhelper.cpp \
-    vmathjaxpreviewhelper.cpp \
-    vmathjaxwebdocument.cpp \
-    vmathjaxinplacepreviewhelper.cpp \
-    vhistorylist.cpp \
-    vexplorer.cpp \
-    vlistue.cpp \
-    vuetitlecontentpanel.cpp \
-    utils/vprocessutils.cpp \
-    vtagpanel.cpp \
-    valltagspanel.cpp \
-    vtaglabel.cpp \
-    vtagexplorer.cpp \
-    pegmarkdownhighlighter.cpp \
-    pegparser.cpp \
-    peghighlighterresult.cpp \
-    vtexteditcompleter.cpp \
-    utils/vkeyboardlayoutmanager.cpp \
-    dialog/vkeyboardlayoutmappingdialog.cpp \
-    vfilelistwidget.cpp \
-    widgets/vcombobox.cpp \
-    vtablehelper.cpp \
-    vtable.cpp \
-    dialog/vinserttabledialog.cpp
+RC_ICONS = data/core/icons/vnote.ico
+ICON = data/core/icons/vnote.icns
 
-HEADERS  += vmainwindow.h \
-    vapplication.h \
-    vdirectorytree.h \
-    vimagehosting.h \
-    vnote.h \
-    vnotebook.h \
-    dialog/vnewdirdialog.h \
-    vconfigmanager.h \
-    vfilelist.h \
-    dialog/vnewfiledialog.h \
-    vedit.h \
-    vconstants.h \
-    vdocument.h \
-    utils/vutils.h \
-    vpreviewpage.h \
-    vstyleparser.h \
-    dialog/vnewnotebookdialog.h \
-    vmarkdownconverter.h \
-    dialog/vnotebookinfodialog.h \
-    dialog/vdirinfodialog.h \
-    dialog/vfileinfodialog.h \
-    veditoperations.h \
-    vmdeditoperations.h \
-    dialog/vinsertimagedialog.h \
-    vdownloader.h \
-    veditarea.h \
-    veditwindow.h \
-    vedittab.h \
-    voutline.h \
-    vsingleinstanceguard.h \
-    vdirectory.h \
-    vfile.h \
-    vnotebookselector.h \
-    vnofocusitemdelegate.h \
-    vmdedit.h \
-    dialog/vfindreplacedialog.h \
-    dialog/vsettingsdialog.h \
-    dialog/vdeletenotebookdialog.h \
-    dialog/vselectdialog.h \
-    vcaptain.h \
-    vopenedlistmenu.h \
-    vnavigationmode.h \
-    vorphanfile.h \
-    vcodeblockhighlighthelper.h \
-    vwebview.h \
-    vmdtab.h \
-    vhtmltab.h \
-    utils/vvim.h \
-    utils/veditutils.h \
-    vvimindicator.h \
-    vbuttonwithwidget.h \
-    vedittabinfo.h \
-    vtabindicator.h \
-    dialog/vupdater.h \
-    dialog/vorphanfileinfodialog.h \
-    vtextblockdata.h \
-    utils/vpreviewutils.h \
-    dialog/vconfirmdeletiondialog.h \
-    vnotefile.h \
-    vattachmentlist.h \
-    dialog/vsortdialog.h \
-    vfilesessioninfo.h \
-    vtableofcontent.h \
-    utils/vmetawordmanager.h \
-    vmetawordlineedit.h \
-    dialog/vinsertlinkdialog.h \
-    vplaintextedit.h \
-    vimageresourcemanager.h \
-    vlinenumberarea.h \
-    veditor.h \
-    vmdeditor.h \
-    veditconfig.h \
-    vpreviewmanager.h \
-    vimageresourcemanager2.h \
-    vtextdocumentlayout.h \
-    vtextedit.h \
-    vsnippetlist.h \
-    vsnippet.h \
-    dialog/veditsnippetdialog.h \
-    utils/vimnavigationforwidget.h \
-    vtoolbox.h \
-    vinsertselector.h \
-    utils/vclipboardutils.h \
-    vpalette.h \
-    vbuttonmenuitem.h \
-    utils/viconutils.h \
-    lineeditdelegate.h \
-    dialog/vtipsdialog.h \
-    dialog/vcopytextashtmldialog.h \
-    vwaitingwidget.h \
-    utils/vwebutils.h \
-    vlineedit.h \
-    vcart.h \
-    vvimcmdlineedit.h \
-    vlistwidget.h \
-    vsimplesearchinput.h \
-    vstyleditemdelegate.h \
-    vtreewidget.h \
-    dialog/vexportdialog.h \
-    vexporter.h \
-    vwordcountinfo.h \
-    vsearcher.h \
-    vsearch.h \
-    vsearchresulttree.h \
-    isearchengine.h \
-    vsearchconfig.h \
-    vsearchengine.h \
-    vuniversalentry.h \
-    iuniversalentry.h \
-    vlistwidgetdoublerows.h \
-    vdoublerowitemwidget.h \
-    vsearchue.h \
-    voutlineue.h \
-    vhelpue.h \
-    vlistfolderue.h \
-    dialog/vfixnotebookdialog.h \
-    vplantumlhelper.h \
-    vgraphvizhelper.h \
-    vlivepreviewhelper.h \
-    vmathjaxpreviewhelper.h \
-    vmathjaxwebdocument.h \
-    vmathjaxinplacepreviewhelper.h \
-    markdownitoption.h \
-    vhistorylist.h \
-    vhistoryentry.h \
-    vexplorer.h \
-    vexplorerentry.h \
-    vlistue.h \
-    vuetitlecontentpanel.h \
-    utils/vprocessutils.h \
-    vtagpanel.h \
-    valltagspanel.h \
-    vtaglabel.h \
-    vtagexplorer.h \
-    markdownhighlighterdata.h \
-    pegmarkdownhighlighter.h \
-    pegparser.h \
-    peghighlighterresult.h \
-    vtexteditcompleter.h \
-    vtextdocumentlayoutdata.h \
-    utils/vkeyboardlayoutmanager.h \
-    dialog/vkeyboardlayoutmappingdialog.h \
-    vfilelistwidget.h \
-    widgets/vcombobox.h \
-    vtablehelper.h \
-    vtable.h \
-    dialog/vinserttabledialog.h
+TRANSLATIONS += data/core/translations/vnote_zh_CN.ts
+
+SOURCES += \
+    main.cpp
+
+INCLUDEPATH *= $$PWD
+
+LIBS_FOLDER = $$PWD/../libs
+
+include($$LIBS_FOLDER/vtextedit/src/editor/editor_export.pri)
+
+include($$LIBS_FOLDER/vtextedit/src/libs/syntax-highlighting/syntax-highlighting_export.pri)
+
+include($$PWD/utils/utils.pri)
+
+include($$PWD/core/core.pri)
+
+include($$PWD/widgets/widgets.pri)
 
 RESOURCES += \
-    vnote.qrc \
-    translations.qrc
-    
-QTQUICK_COMPILER_SKIPPED_RESOURCES += vnote.qrc
+    $$PWD/data/core/core.qrc
+
+RCC_BINARY_SOURCES += $$PWD/data/extra/extra.qrc
+
+win32 {
+    rcc_binary.commands = $$shell_path($$[QT_HOST_BINS]/rcc.exe) -name ${QMAKE_FILE_IN_BASE} -binary ${QMAKE_FILE_IN} -o ${QMAKE_FILE_OUT}
+    rcc_binary.depend_command = $$shell_path($$[QT_HOST_BINS]/rcc.exe) -list $$QMAKE_RESOURCE_FLAGS ${QMAKE_FILE_IN}
+} else {
+    rcc_binary.commands = $$[QT_HOST_BINS]/rcc -name ${QMAKE_FILE_IN_BASE} -binary ${QMAKE_FILE_IN} -o ${QMAKE_FILE_OUT}
+    rcc_binary.depend_command = $$[QT_HOST_BINS]/rcc -list $$QMAKE_RESOURCE_FLAGS ${QMAKE_FILE_IN}
+}
+rcc_binary.input = RCC_BINARY_SOURCES
+rcc_binary.output = $$SRC_DESTDIR/vnote_${QMAKE_FILE_IN_BASE}.rcc
+rcc_binary.CONFIG += no_link target_predeps
+QMAKE_EXTRA_COMPILERS += rcc_binary
+
+OTHER_FILES += $$RCC_BINARY_SOURCES
 
 macx {
-    LIBS += -L/usr/local/lib
-    INCLUDEPATH += /usr/local/include
-}
+    QMAKE_INFO_PLIST = data/core/Info.plist
 
-INCLUDEPATH += $$PWD/../peg-highlight
-DEPENDPATH += $$PWD/../peg-highlight
+    # Process VTextEdit framework
+    vte_lib_name = VTextEdit
+    vte_lib_dir = $${OUT_PWD}/../libs/vtextedit/src/editor
+    vte_lib_full_name = $${vte_lib_name}.framework/Versions/1/$${vte_lib_name}
+    app_bundle_dir = $${TARGET}.app/Contents/MacOS
+    app_target = $${app_bundle_dir}/$${TARGET}
+    QMAKE_POST_LINK += \
+        install_name_tool -add_rpath $${vte_lib_dir} $${app_target} && \
+        install_name_tool -change $${vte_lib_full_name} @rpath/$${vte_lib_full_name} $${app_target} &&
 
-INCLUDEPATH += $$PWD/../hoedown
-DEPENDPATH += $$PWD/../hoedown
+    # Process VSyntaxHighlighting framework
+    sh_lib_name = VSyntaxHighlighting
+    sh_lib_dir = $${OUT_PWD}/../libs/vtextedit/src/libs/syntax-highlighting
+    sh_lib_full_name = $${sh_lib_name}.framework/Versions/1/$${sh_lib_name}
+    QMAKE_POST_LINK += \
+        install_name_tool -add_rpath $${sh_lib_dir} $${app_target} && \
+        install_name_tool -change $${sh_lib_full_name} @rpath/$${sh_lib_full_name} $${app_target}
 
-win32-g++:CONFIG(release, debug|release) {
-    LIBS += $$OUT_PWD/../peg-highlight/release/libpeg-highlight.a
-    LIBS += $$OUT_PWD/../hoedown/release/libhoedown.a
-
-    # Explicitly listing dependent static libraries.
-    PRE_TARGETDEPS += $$OUT_PWD/../peg-highlight/release/libpeg-highlight.a
-    PRE_TARGETDEPS += $$OUT_PWD/../hoedown/release/libhoedown.a
-} else:win32-g++:CONFIG(debug, debug|release) {
-    LIBS += $$OUT_PWD/../peg-highlight/debug/libpeg-highlight.a
-    LIBS += $$OUT_PWD/../hoedown/debug/libhoedown.a
-
-    PRE_TARGETDEPS += $$OUT_PWD/../peg-highlight/debug/libpeg-highlight.a
-    PRE_TARGETDEPS += $$OUT_PWD/../hoedown/debug/libhoedown.a
-} else:win32:!win32-g++:CONFIG(release, debug|release) {
-    LIBS += $$OUT_PWD/../peg-highlight/release/peg-highlight.lib
-    LIBS += $$OUT_PWD/../hoedown/release/hoedown.lib
-
-    PRE_TARGETDEPS += $$OUT_PWD/../peg-highlight/release/peg-highlight.lib
-    PRE_TARGETDEPS += $$OUT_PWD/../hoedown/release/hoedown.lib
-} else:win32:!win32-g++:CONFIG(debug, debug|release) {
-    LIBS += $$OUT_PWD/../peg-highlight/debug/peg-highlight.lib
-    LIBS += $$OUT_PWD/../hoedown/debug/hoedown.lib
-
-    PRE_TARGETDEPS += $$OUT_PWD/../peg-highlight/debug/peg-highlight.lib
-    PRE_TARGETDEPS += $$OUT_PWD/../hoedown/debug/hoedown.lib
-} else:unix {
-    LIBS += $$OUT_PWD/../peg-highlight/libpeg-highlight.a
-    LIBS += $$OUT_PWD/../hoedown/libhoedown.a
-
-    PRE_TARGETDEPS += $$OUT_PWD/../peg-highlight/libpeg-highlight.a
-    PRE_TARGETDEPS += $$OUT_PWD/../hoedown/libhoedown.a
+    # Move vnote_extra.rcc to the bundle.
+    BUNDLE_EXTRA_RCC.files = $${SRC_DESTDIR}/vnote_extra.rcc
+    BUNDLE_EXTRA_RCC.path = Contents/MacOS
+    QMAKE_BUNDLE_DATA += BUNDLE_EXTRA_RCC
 }
 
 ## INSTALLS
 unix:!macx {
     isEmpty(PREFIX): PREFIX = /usr
     DATADIR = $${PREFIX}/share
+    BINDIR = $${PREFIX}/bin
+    LIBDIR = $${PREFIX}/lib
+    INCLUDEDIR = $${PREFIX}/include
 
     # install desktop file
     desktop.path = $${DATADIR}/applications
-    desktop.files += vnote.desktop
+    desktop.files += data/core/vnote.desktop
 
     # install icons
     icon16.path = $${DATADIR}/icons/hicolor/16x16/apps
-    icon16.files = resources/icons/16x16/vnote.png
+    icon16.files = data/core/logo/16x16/vnote.png
 
     icon32.path = $${DATADIR}/icons/hicolor/32x32/apps
-    icon32.files = resources/icons/32x32/vnote.png
+    icon32.files = data/core/logo/32x32/vnote.png
 
     icon48.path = $${DATADIR}/icons/hicolor/48x48/apps
-    icon48.files = resources/icons/48x48/vnote.png
+    icon48.files = data/core/logo/48x48/vnote.png
 
     icon64.path = $${DATADIR}/icons/hicolor/64x64/apps
-    icon64.files = resources/icons/64x64/vnote.png
+    icon64.files = data/core/logo/64x64/vnote.png
 
     icon128.path = $${DATADIR}/icons/hicolor/128x128/apps
-    icon128.files = resources/icons/128x128/vnote.png
+    icon128.files = data/core/logo/128x128/vnote.png
 
     icon256.path = $${DATADIR}/icons/hicolor/256x256/apps
-    icon256.files = resources/icons/256x256/vnote.png
+    icon256.files = data/core/logo/256x256/vnote.png
 
     iconsvg.path = $${DATADIR}/icons/hicolor/scalable/apps
-    iconsvg.files = resources/icons/vnote.svg
+    iconsvg.files = data/core/logo/vnote.svg
 
-    target.path = $${PREFIX}/bin
+    target.path = $${BINDIR}
 
-    lntarget.path = $${PREFIX}/bin
-    lntarget.extra = $(SYMLINK) $(QMAKE_TARGET) $(INSTALL_ROOT)$${PREFIX}/bin/vnote
+    extraresource.path = $${BINDIR}
+    extraresource.extra = cp $${SRC_DESTDIR}/vnote_extra.rcc $(INSTALL_ROOT)$${BINDIR}/vnote_extra.rcc
 
-    INSTALLS += target lntarget desktop icon16 icon32 icon48 icon64 icon128 icon256 iconsvg
+    INSTALLS += target desktop icon16 icon32 icon48 icon64 icon128 icon256 iconsvg
+    INSTALLS += extraresource
     message("VNote will be installed in prefix $${PREFIX}")
 }
