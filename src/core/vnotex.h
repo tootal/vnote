@@ -5,6 +5,7 @@
 #include <QScopedPointer>
 
 #include "thememgr.h"
+#include "taskmgr.h"
 #include "global.h"
 
 namespace vnotex
@@ -35,6 +36,8 @@ namespace vnotex
         void initLoad();
 
         ThemeMgr &getThemeMgr() const;
+        
+        TaskMgr &getTaskMgr() const;
 
         void setMainWindow(MainWindow *p_mainWindow);
         MainWindow *getMainWindow() const;
@@ -78,6 +81,9 @@ namespace vnotex
 
         // Requested to show status message.
         void statusMessageRequested(const QString &p_message, int timeoutMilliseconds);
+        
+        // Requested to show output message.
+        void showOutputRequested(const QString &p_text);
 
         // Requested to open @p_node.
         void openNodeRequested(Node *p_node, const QSharedPointer<FileOpenParameters> &p_paras);
@@ -101,6 +107,8 @@ namespace vnotex
         explicit VNoteX(QObject *p_parent = nullptr);
 
         void initThemeMgr();
+        
+        void initTaskMgr();
 
         void initNotebookMgr();
 
@@ -112,6 +120,9 @@ namespace vnotex
 
         // QObject managed.
         ThemeMgr *m_themeMgr;
+        
+        // QObject managed.
+        TaskMgr *m_taskMgr;
 
         // QObject managed.
         NotebookMgr *m_notebookMgr;

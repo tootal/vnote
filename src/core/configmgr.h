@@ -72,10 +72,14 @@ namespace vnotex
         QString getUserFolder() const;
 
         QString getLogFile() const;
-
+        
         QString getAppThemeFolder() const;
 
         QString getUserThemeFolder() const;
+        
+        QString getAppTaskFolder() const;
+
+        QString getUserTaskFolder() const;
 
         QString getAppDocsFolder() const;
 

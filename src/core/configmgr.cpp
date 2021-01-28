@@ -320,6 +320,18 @@ QString ConfigMgr::getUserThemeFolder() const
     return folderPath;
 }
 
+QString ConfigMgr::getAppTaskFolder() const
+{
+    return PathUtils::concatenateFilePath(m_appConfigFolderPath, QStringLiteral("tasks"));    
+}
+
+QString ConfigMgr::getUserTaskFolder() const
+{
+    auto folderPath = PathUtils::concatenateFilePath(m_userConfigFolderPath, QStringLiteral("tasks"));
+    QDir().mkpath(folderPath);
+    return folderPath;
+}
+
 QString ConfigMgr::getAppDocsFolder() const
 {
     return PathUtils::concatenateFilePath(m_appConfigFolderPath, QStringLiteral("docs"));

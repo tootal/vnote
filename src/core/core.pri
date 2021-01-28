@@ -12,6 +12,8 @@ include($$PWD/buffer/buffer.pri)
 
 SOURCES += \
     $$PWD/buffermgr.cpp \
+    $$PWD/task.cpp \
+    $$PWD/taskmgr.cpp \
     $$PWD/configmgr.cpp \
     $$PWD/coreconfig.cpp \
     $$PWD/editorconfig.cpp \
@@ -32,6 +34,8 @@ SOURCES += \
 HEADERS += \
     $$PWD/ViewerResource.h \
     $$PWD/buffermgr.h \
+    $$PWD/task.h \
+    $$PWD/taskmgr.h \
     $$PWD/configmgr.h \
     $$PWD/coreconfig.h \
     $$PWD/editorconfig.h \

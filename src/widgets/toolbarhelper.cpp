@@ -22,6 +22,7 @@
 #include <core/fileopenparameters.h>
 #include "propertydefs.h"
 #include "dialogs/settings/settingsdialog.h"
+#include <core/task.h>
 
 using namespace vnotex;
 
@@ -168,8 +169,44 @@ QToolBar *ToolBarHelper::setupFileToolBar(MainWindow *p_win, QToolBar *p_toolBar
                                emit VNoteX::getInst().importFolderRequested();
                            });
     }
-
+    
+    // Tasks.
+    {
+        auto act = tb->addAction(generateIcon("tasks.svg"), MainWindow::tr("Tasks"));
+        auto btn = dynamic_cast<QToolButton *>(tb->widgetForAction(act));
+        Q_ASSERT(btn);
+        btn->setPopupMode(QToolButton::InstantPopup);
+        btn->setProperty(PropertyDefs::s_toolButtonWithoutMenuIndicator, true);
+        
+        auto taskMenu = setupTaskMenu(tb);
+        btn->setMenu(taskMenu);
+    }
+    
     return tb;
+}
+
+QMenu *ToolBarHelper::setupTaskMenu(QToolBar *p_tb)
+{
+    auto menu = WidgetsFactory::createMenu(p_tb);
+    const auto &taskMgr = VNoteX::getInst().getTaskMgr();
+    for (auto task : taskMgr.getAllTasks()) {
+        addTaskMenu(menu, task);
+    }
+    return menu;
+}
+
+void ToolBarHelper::addTaskMenu(QMenu *p_menu, Task *p_task)
+{
+    if (p_task->getTasks().isEmpty()) {
+        p_menu->addAction(Task::runAction(p_task));
+        MainWindow::connect(p_task, &Task::showOutput,
+                            &VNoteX::getInst(), &VNoteX::showOutputRequested);
+    } else {
+        auto menu = p_menu->addMenu(p_task->getLabel());
+        for (auto task : p_task->getTasks()) {
+            addTaskMenu(menu, task);
+        }
+    }
 }
 
 QToolBar *ToolBarHelper::setupQuickAccessToolBar(MainWindow *p_win, QToolBar *p_toolBar)
