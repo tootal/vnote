@@ -370,7 +370,7 @@ void Task::run() const
     }
     if (process) {
         // start process
-        qDebug() << "run task" << process->program() << process->arguments();
+        qInfo() << "run task" << process->program() << process->arguments();
         process->start();
     }
 }
