@@ -3,7 +3,7 @@ interface TaskConfiguration {
      * The configuration's version number
      * If omitted latest version is used.
      */
-    version?: '0.1.5';
+    version?: '0.1.6';
 
     /**
      * Windows specific task configuration
@@ -45,6 +45,18 @@ interface TaskConfiguration {
      * If task has command, the command is used.
      */
     label?: TranslatableString;
+
+    /**
+     * The task's icon.
+     * task icon will not be inherited
+     */
+    icon?: string;
+
+    /**
+     * The task's shortcut.
+     * task icon will not be inherited
+     */
+    shortcut?: string;
 
     /**
       * The command options used when the command is executed. Can be omitted.

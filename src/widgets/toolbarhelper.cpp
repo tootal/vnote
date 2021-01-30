@@ -202,7 +202,17 @@ void ToolBarHelper::setupTaskMenu(QMenu *p_menu)
 void ToolBarHelper::addTaskMenu(QMenu *p_menu, Task *p_task)
 {
     if (p_task->getTasks().isEmpty()) {
-        p_menu->addAction(Task::runAction(p_task));
+        auto label = p_task->getLabel().replace("&", "&&");
+        auto act = new QAction(label, p_task);
+        if (!p_task->getIcon().isNull()) {
+            act->setIcon(generateIcon(p_task->getIcon()));
+        }
+        if (!p_task->getShortcut().isNull()) {
+            WidgetUtils::addActionShortcut(act, p_task->getShortcut());
+        }
+        MainWindow::connect(act, &QAction::triggered,
+                            p_task, &Task::run);
+        p_menu->addAction(act);
         MainWindow::connect(p_task, &Task::showOutput,
                             &VNoteX::getInst(), &VNoteX::showOutputRequested);
     } else {

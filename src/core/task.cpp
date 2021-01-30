@@ -11,6 +11,7 @@
 #include <QTextCodec>
 
 #include "utils/fileutils.h"
+#include "utils/pathutils.h"
 #include "vnotex.h"
 #include "notebookmgr.h"
 #include "exception.h"
@@ -51,6 +52,29 @@ Task *Task::fromJsonV0(Task *p_task,
                        const QJsonObject &p_obj,
                        bool mergeTasks)
 {
+    if (p_obj.contains("type")) {
+        p_task->m_type = p_obj["type"].toString();
+    }
+    
+    if (p_obj.contains("icon")) {
+        QString path = p_obj["icon"].toString();
+        QDir iconPath(path);
+        if (iconPath.isRelative()) {
+            QDir taskDir(p_task->m_file);
+            taskDir.cdUp();
+            path = QDir(taskDir.filePath(path)).absolutePath();
+        }
+        if (QFile::exists(path)) {
+            p_task->m_icon = path;
+        } else {
+            qWarning() << "task icon not exists" << path;
+        }
+    }
+    
+    if (p_obj.contains("shortcut")) {
+        p_task->m_shortcut = p_obj["shortcut"].toString();
+    }
+    
     if (p_obj.contains("type")) {
         p_task->m_type = p_obj["type"].toString();
     }
@@ -202,6 +226,16 @@ QStringList Task::getArgs() const
 QString Task::getLabel() const
 {
     return m_label;
+}
+
+QString Task::getIcon() const
+{
+    return m_icon;
+}
+
+QString Task::getShortcut() const
+{
+    return m_shortcut;
 }
 
 QString Task::getOptionsCwd() const
@@ -614,13 +648,4 @@ QStringList Task::getStringList(const QJsonValue &p_value)
         list << value.toString();
     }
     return list;
-}
-
-QAction *Task::runAction(Task *p_task)
-{
-    auto label = p_task->getLabel().replace("&", "&&");
-    auto act = new QAction(label, p_task);
-    connect(act, &QAction::triggered,
-            p_task, &Task::run);
-    return act;
 }

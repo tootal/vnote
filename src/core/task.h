@@ -30,6 +30,8 @@ namespace vnotex {
                               const QString &p_locale,
                               QObject *p_parent = nullptr);
         
+        void run() const;
+        
         QString getVersion() const;
         
         QString getType() const;
@@ -39,6 +41,10 @@ namespace vnotex {
         QStringList getArgs() const;
         
         QString getLabel() const;
+        
+        QString getIcon() const;
+        
+        QString getShortcut() const;
         
         QString getOptionsCwd() const;
         
@@ -57,8 +63,6 @@ namespace vnotex {
         Input getInput(const QString &p_id) const;
         
         QString getFile() const;
-        
-        static QAction *runAction(Task *p_task);
         
         static QString s_latestVersion;
         
@@ -89,8 +93,6 @@ namespace vnotex {
                             QObject *p_parent = nullptr);
         
         QProcess *setupProcess() const;
-        
-        void run() const;
         
         QString replaceVariables(const QString &p_text) const;
         
@@ -136,6 +138,10 @@ namespace vnotex {
         QStringList m_args;
         
         QString m_label;
+        
+        QString m_icon;
+        
+        QString m_shortcut;
         
         QString m_options_cwd;
         
