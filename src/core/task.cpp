@@ -381,7 +381,7 @@ QStringList Task::defaultShellArgs(const QString &p_shell)
 {
     if (p_shell == "cmd") {
         return {"/C"};
-    } else if (p_shell == "powershell") {
+    } else if (p_shell == "powershell" || p_shell == "pwsh") {
         return {"-Command"};
     } else if (p_shell == "bash") {
         return {"-c"};
