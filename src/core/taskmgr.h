@@ -7,6 +7,8 @@
 
 #include "task.h"
 
+class QFileSystemWatcher;
+
 namespace vnotex
 {
     class TaskMgr : public QObject
@@ -24,7 +26,18 @@ namespace vnotex
         
         static void addSearchPath(const QString &p_path);
         
+    signals:
+        void taskChanged();
+        
     private:
+        void addWatchPaths(const QStringList &list);
+        
+        void clearWatchPaths();
+        
+        void onTaskChanged();
+        
+        void watchTaskEntrys();
+        
         void loadAvailableTasks();
         
         void loadTasks(const QString &p_path);
@@ -33,7 +46,13 @@ namespace vnotex
         
         QVector<Task*> m_tasks;
         
-        // List of path to search for themes.
+        // all json files in task folder
+        // maybe invalid
+        QStringList m_files;
+        
+        QFileSystemWatcher *m_watcher;
+        
+        // List of path to search for tasks.
         static QStringList s_searchPaths;
     };
 } // ns vnotex
