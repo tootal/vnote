@@ -178,21 +178,25 @@ QToolBar *ToolBarHelper::setupFileToolBar(MainWindow *p_win, QToolBar *p_toolBar
         btn->setPopupMode(QToolButton::InstantPopup);
         btn->setProperty(PropertyDefs::s_toolButtonWithoutMenuIndicator, true);
         
-        auto taskMenu = setupTaskMenu(tb);
+        auto taskMenu = WidgetsFactory::createMenu(tb);
+        setupTaskMenu(taskMenu);
+        MainWindow::connect(&VNoteX::getInst().getTaskMgr(), &TaskMgr::taskChanged,
+                            taskMenu, [taskMenu]() {
+            setupTaskMenu(taskMenu);
+        });
         btn->setMenu(taskMenu);
     }
     
     return tb;
 }
 
-QMenu *ToolBarHelper::setupTaskMenu(QToolBar *p_tb)
+void ToolBarHelper::setupTaskMenu(QMenu *p_menu)
 {
-    auto menu = WidgetsFactory::createMenu(p_tb);
+    p_menu->clear();
     const auto &taskMgr = VNoteX::getInst().getTaskMgr();
     for (auto task : taskMgr.getAllTasks()) {
-        addTaskMenu(menu, task);
+        addTaskMenu(p_menu, task);
     }
-    return menu;
 }
 
 void ToolBarHelper::addTaskMenu(QMenu *p_menu, Task *p_task)

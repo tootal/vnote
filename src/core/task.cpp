@@ -13,6 +13,7 @@
 #include "utils/fileutils.h"
 #include "vnotex.h"
 #include "notebookmgr.h"
+#include "exception.h"
 #include <widgets/mainwindow.h>
 #include <widgets/viewarea.h>
 #include <widgets/viewwindow.h>
@@ -23,11 +24,12 @@ using namespace vnotex;
 QString Task::s_latestVersion = "0.1.3";
 
 Task *Task::fromFile(const QString &p_file, 
+                     const QJsonDocument &p_json,
                      const QString &p_locale, 
                      QObject *p_parent)
 {
     auto task = new Task(p_locale, p_file, p_parent);
-    return fromJson(task, readTaskFile(p_file));
+    return fromJson(task, p_json.object());
 }
 
 Task* Task::fromJson(Task *p_task,
@@ -378,12 +380,6 @@ void Task::run() const
     }
 }
 
-QJsonObject Task::readTaskFile(const QString &p_file)
-{
-    auto bytes = FileUtils::readFile(p_file);
-    return QJsonDocument::fromJson(bytes).object();
-}
-
 QStringList Task::defaultShellArgs(const QString &p_shell)
 {
     if (p_shell == "cmd") {
@@ -566,11 +562,20 @@ QString Task::getCurrentNotebookFolder()
     return notebookMgr.getCurrentNotebookFolder();
 }
 
-bool Task::isValidTaskFile(const QString &p_file)
+bool Task::isValidTaskFile(const QString &p_file, 
+                           QJsonDocument &p_json)
 {
     QFile file(p_file);
-    if (!file.exists()) {
-        qWarning() << "task file does not exist: " << p_file;
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        Exception::throwOne(Exception::Type::FailToReadFile,
+                            QString("fail to read file: %1").arg(p_file));
+    }
+    QJsonParseError error;
+    p_json = QJsonDocument::fromJson(file.readAll(), &error);
+    file.close();
+    if (p_json.isNull()) {
+        qDebug() << "load task" << p_file << "failed: " << error.errorString()
+                 << "at offset" << error.offset;
         return false;
     }
     

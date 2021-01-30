@@ -25,9 +25,10 @@ namespace vnotex {
             QStringList m_options;
         };
         
-        static Task* fromFile(const QString &p_file, 
-                                    const QString &p_locale,
-                                    QObject *p_parent = nullptr);
+        static Task* fromFile(const QString &p_file,
+                              const QJsonDocument &p_json,
+                              const QString &p_locale,
+                              QObject *p_parent = nullptr);
         
         QString getVersion() const;
         
@@ -61,7 +62,8 @@ namespace vnotex {
         
         static QString s_latestVersion;
         
-        static bool isValidTaskFile(const QString &p_file);
+        static bool isValidTaskFile(const QString &p_file,
+                                    QJsonDocument &p_json);
         
         static QString getLocaleString(const QJsonValue &p_value,
                                        const QString &p_locale);
@@ -103,8 +105,6 @@ namespace vnotex {
         static QString textDecode(const QByteArray &p_text);
         
         static QString textDecode(const QByteArray &p_text, const QByteArray &name);
-        
-        static QJsonObject readTaskFile(const QString &p_file);
         
         static QStringList defaultShellArgs(const QString &p_shell);
         

@@ -76,7 +76,7 @@ namespace vnotex
         // @p_nameFilters is for each dir, not for all.
         static QStringList entryListRecursively(const QString &p_dirPath,
                                                 const QStringList &p_nameFilters,
-                                                const QString &p_base = "");
+                                                QDir::Filters filters=QDir::NoFilter);
     };
 } // ns vnotex
 
