@@ -201,26 +201,25 @@ void ToolBarHelper::setupTaskMenu(QMenu *p_menu)
 
 void ToolBarHelper::addTaskMenu(QMenu *p_menu, Task *p_task)
 {
-    if (p_task->getTasks().isEmpty()) {
-        auto label = p_task->getLabel().replace("&", "&&");
-        auto act = new QAction(label, p_task);
-        if (!p_task->getIcon().isNull()) {
-            act->setIcon(generateIcon(p_task->getIcon()));
-        }
-        if (!p_task->getShortcut().isNull()) {
-            WidgetUtils::addActionShortcut(act, p_task->getShortcut());
-        }
-        MainWindow::connect(act, &QAction::triggered,
-                            p_task, &Task::run);
-        p_menu->addAction(act);
-        MainWindow::connect(p_task, &Task::showOutput,
-                            &VNoteX::getInst(), &VNoteX::showOutputRequested);
+    MainWindow::connect(p_task, &Task::showOutput,
+                        &VNoteX::getInst(), &VNoteX::showOutputRequested);
+    QAction *action = nullptr;
+    const auto &tasks = p_task->getTasks();
+    auto label = p_task->getLabel();
+    auto icon = generateIcon(p_task->getIcon());
+    if (tasks.isEmpty()) {
+        action = p_menu->addAction(label);
     } else {
-        auto menu = p_menu->addMenu(p_task->getLabel());
-        for (auto task : p_task->getTasks()) {
+        auto menu = p_menu->addMenu(label);
+        for (auto task : tasks) {
             addTaskMenu(menu, task);
         }
+        action = menu->menuAction();
     }
+    action->setIcon(icon);
+    WidgetUtils::addActionShortcut(action, p_task->getShortcut());
+    MainWindow::connect(action, &QAction::triggered,
+                        p_task, &Task::run);
 }
 
 QToolBar *ToolBarHelper::setupQuickAccessToolBar(MainWindow *p_win, QToolBar *p_toolBar)
@@ -462,6 +461,7 @@ static const QString c_dangerousPalette = QStringLiteral("widgets#toolbar#icon#d
 
 QIcon ToolBarHelper::generateIcon(const QString &p_iconName)
 {
+    if (p_iconName.isEmpty()) return QIcon();
     const auto &themeMgr = VNoteX::getInst().getThemeMgr();
     const auto fg = themeMgr.paletteColor(c_fgPalette);
     const auto disabledFg = themeMgr.paletteColor(c_disabledPalette);
