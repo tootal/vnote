@@ -20,6 +20,7 @@
 #include <core/configmgr.h>
 #include <core/coreconfig.h>
 #include <core/fileopenparameters.h>
+#include <core/exception.h>
 #include "propertydefs.h"
 #include "dialogs/settings/settingsdialog.h"
 #include <core/task.h>
@@ -206,7 +207,14 @@ void ToolBarHelper::addTaskMenu(QMenu *p_menu, Task *p_task)
     QAction *action = nullptr;
     const auto &tasks = p_task->getTasks();
     auto label = p_task->getLabel();
-    auto icon = generateIcon(p_task->getIcon());
+    QIcon icon;
+    try {
+        icon = generateIcon(p_task->getIcon());
+    }  catch (Exception e) {
+        if (e.m_type != Exception::Type::FailToReadFile) {
+            throw;
+        }
+    }
     if (tasks.isEmpty()) {
         action = p_menu->addAction(label);
     } else {
