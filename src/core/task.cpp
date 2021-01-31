@@ -364,8 +364,11 @@ QProcess *Task::setupProcess() const
         QStringList allArgs;
         process->setProgram(getOptionsShellExecutable());
         allArgs << getOptionsShellArgs();
-        allArgs << command;
-        allArgs << args;
+        if (shell == "bash") {
+            allArgs << (QStringList() << command << args).join(' ').replace("\"", "\\\"");
+        } else {
+            allArgs << command << args;
+        }
         process->setArguments(allArgs);
     } else if (getType() == "process") {
         process->setProgram(command);
@@ -373,18 +376,18 @@ QProcess *Task::setupProcess() const
     }
 
     // connect signal and slot
-    connect(process, &QProcess::errorOccurred,
-            this, [this](QProcess::ProcessError error) {
-        emit showOutput(tr("[Task %1 error occurred with code %2]").arg(getLabel(), QString::number(error)));
+    connect(process, &QProcess::started,
+            this, [this]() {
+        emit showOutput(tr("[Task %1 started]\n").arg(getLabel()));
     });
     connect(process, &QProcess::readyReadStandardOutput,
             this, [process, this]() {
         auto text = process->readAllStandardOutput();
         emit showOutput(textDecode(text));
     });
-    connect(process, &QProcess::started,
-            this, [this]() {
-        emit showOutput(tr("[Task %1 started]\n").arg(getLabel()));
+    connect(process, &QProcess::errorOccurred,
+            this, [this](QProcess::ProcessError error) {
+        emit showOutput(tr("[Task %1 error occurred with code %2]").arg(getLabel(), QString::number(error)));
     });
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this, process](int exitCode) {
