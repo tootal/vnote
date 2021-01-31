@@ -118,6 +118,11 @@ QString TextViewWindow::getLatestContent() const
     return m_editor->getText();
 }
 
+QString TextViewWindow::selectedText() const
+{
+    return m_editor->getTextEdit()->selectedText();
+}
+
 void TextViewWindow::setModified(bool p_modified)
 {
     m_editor->setModified(p_modified);

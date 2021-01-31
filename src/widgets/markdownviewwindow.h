@@ -32,6 +32,8 @@ namespace vnotex
         MarkdownViewWindow(const QSharedPointer<FileOpenParameters> &p_paras, QWidget *p_parent = nullptr);
 
         ~MarkdownViewWindow();
+        
+        QString selectedText();
 
         QString getLatestContent() const Q_DECL_OVERRIDE;
 

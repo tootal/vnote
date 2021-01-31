@@ -180,7 +180,6 @@ QToolBar *ToolBarHelper::setupFileToolBar(MainWindow *p_win, QToolBar *p_toolBar
         btn->setProperty(PropertyDefs::s_toolButtonWithoutMenuIndicator, true);
         
         auto taskMenu = WidgetsFactory::createMenu(tb);
-        setupTaskMenu(taskMenu);
         MainWindow::connect(&VNoteX::getInst().getTaskMgr(), &TaskMgr::taskChanged,
                             taskMenu, [taskMenu]() {
             setupTaskMenu(taskMenu);

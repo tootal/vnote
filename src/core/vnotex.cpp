@@ -37,6 +37,7 @@ VNoteX::VNoteX(QObject *p_parent)
 void VNoteX::initLoad()
 {
     m_notebookMgr->loadNotebooks();
+    m_taskMgr->init();
 }
 
 void VNoteX::initThemeMgr()
@@ -54,9 +55,6 @@ void VNoteX::initThemeMgr()
 void VNoteX::initTaskMgr()
 {
     Q_ASSERT(!m_taskMgr);
-    auto &configMgr = ConfigMgr::getInst();
-    TaskMgr::addSearchPath(configMgr.getAppTaskFolder());
-    TaskMgr::addSearchPath(configMgr.getUserTaskFolder());
     m_taskMgr = new TaskMgr(this);
 }
 

@@ -22,6 +22,8 @@ namespace vnotex
         explicit TextViewWindow(QWidget *p_parent = nullptr);
 
         QString getLatestContent() const Q_DECL_OVERRIDE;
+        
+        QString selectedText() const;
 
         void setMode(Mode p_mode) Q_DECL_OVERRIDE;
 

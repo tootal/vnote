@@ -10,6 +10,8 @@
 #include "utils/pathutils.h"
 #include "utils/fileutils.h"
 #include "vnotex.h"
+#include "notebookmgr.h"
+#include "notebookconfigmgr/bundlenotebookconfigmgr.h"
 
 using namespace vnotex;
 
@@ -18,26 +20,30 @@ QStringList TaskMgr::s_searchPaths;
 TaskMgr::TaskMgr(QObject *parent) 
     : QObject(parent)
 {
-    loadAvailableTasks();
-    
     m_watcher = new QFileSystemWatcher(this);
-    
-    watchTaskEntrys();
-    
-    connect(m_watcher, &QFileSystemWatcher::directoryChanged,
-            this, &TaskMgr::onTaskChanged);
-    connect(m_watcher, &QFileSystemWatcher::fileChanged,
-            this, &TaskMgr::onTaskChanged);
 }
 
-const QVector<Task*> &TaskMgr::getAllTasks() const
-{
-    return m_tasks;
+void TaskMgr::init()
+{   
+    // load all tasks and watch them
+    loadAllTask();
+    
+    connect(&VNoteX::getInst().getNotebookMgr(), &NotebookMgr::currentNotebookChanged,
+            this, &TaskMgr::loadAllTask);
+    connect(m_watcher, &QFileSystemWatcher::directoryChanged,
+            this, &TaskMgr::loadAllTask);
+    connect(m_watcher, &QFileSystemWatcher::fileChanged,
+            this, &TaskMgr::loadAllTask);
 }
 
 void TaskMgr::refresh()
 {
     loadAvailableTasks();
+}
+
+const QVector<Task*> &TaskMgr::getAllTasks() const
+{
+    return m_tasks;
 }
 
 void TaskMgr::addSearchPath(const QString &p_path)
@@ -64,9 +70,39 @@ void TaskMgr::clearWatchPaths()
     }
 }
 
-void TaskMgr::onTaskChanged()
+void TaskMgr::addAllTaskFolder()
 {
-    refresh();
+    s_searchPaths.clear();
+    auto &configMgr = ConfigMgr::getInst();
+    // App scope task folder
+    TaskMgr::addSearchPath(configMgr.getAppTaskFolder());
+    // User scope task folder
+    TaskMgr::addSearchPath(configMgr.getUserTaskFolder());
+    // Notebook scope task folder
+    const auto &notebookMgr = VNoteX::getInst().getNotebookMgr();
+    auto id = notebookMgr.getCurrentNotebookId();
+    do {
+        if (id == Notebook::InvalidId) break;
+        auto notebook = notebookMgr.findNotebookById(id);
+        if (!notebook) break;
+        auto configMgr = notebook->getConfigMgr();
+        if (!configMgr) break;
+        auto configMgrName = configMgr->getName();
+        if (configMgrName == "vx.vnotex") {
+            QDir dir(notebook->getRootFolderAbsolutePath());
+            dir.cd(BundleNotebookConfigMgr::getConfigFolderName());
+            if (!dir.cd("tasks")) break;
+            addSearchPath(dir.absolutePath());
+        } else {
+            qWarning() << "Unknow notebook config type"<< configMgrName <<"task will not be load.";
+        }
+    } while(0);
+}
+
+void TaskMgr::loadAllTask()
+{
+    addAllTaskFolder();
+    loadAvailableTasks();
     watchTaskEntrys();
     emit taskChanged();
 }

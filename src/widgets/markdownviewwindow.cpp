@@ -63,6 +63,13 @@ MarkdownViewWindow::~MarkdownViewWindow()
     m_mainStatusWidget->setParent(nullptr);
 }
 
+QString MarkdownViewWindow::selectedText()
+{
+    if (!m_editor) return QString();
+    if (!m_editor->getTextEdit()) return QString();
+    return m_editor->getTextEdit()->selectedText();
+}
+
 void MarkdownViewWindow::setupUI()
 {
     // Central widget.

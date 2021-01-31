@@ -258,14 +258,6 @@ ID NotebookMgr::getCurrentNotebookId() const
     return m_currentNotebookId;
 }
 
-QString NotebookMgr::getCurrentNotebookFolder() const
-{
-    auto id = getCurrentNotebookId();
-    auto notebook = findNotebookById(id);
-    if (notebook) return notebook->getRootFolderAbsolutePath();
-    return QString();
-}
-
 void NotebookMgr::setCurrentNotebook(ID p_notebookId)
 {
     auto lastId = m_currentNotebookId;

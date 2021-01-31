@@ -11,6 +11,8 @@ class QAction;
 
 namespace vnotex {
 
+    class Notebook;
+    
     class Task : public QObject
     {
         Q_OBJECT
@@ -126,8 +128,11 @@ namespace vnotex {
         
         static QString getCurrentFile();
         
-        static QString getCurrentNotebookFolder();
+        static QSharedPointer<Notebook> getCurrentNotebook();
         
+        static QString getFileNotebookFolder(const QString p_currentFile);
+        
+        static QString getSelectedText();
         
         QString m_version;
         

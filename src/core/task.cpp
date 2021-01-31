@@ -19,6 +19,8 @@
 #include <widgets/viewarea.h>
 #include <widgets/viewwindow.h>
 #include <widgets/dialogs/selectdialog.h>
+#include <widgets/markdownviewwindow.h>
+#include <widgets/textviewwindow.h>
 
 using namespace vnotex;
 
@@ -244,7 +246,8 @@ QString Task::getOptionsCwd() const
     if (!cwd.isNull()) {
         return replaceVariables(cwd);
     }
-    cwd = getCurrentNotebookFolder();
+    auto notebook = getCurrentNotebook();
+    if (notebook) cwd = notebook->getRootFolderAbsolutePath();
     if (!cwd.isNull()) {
         return cwd;
     }
@@ -387,7 +390,7 @@ QProcess *Task::setupProcess() const
     });
     connect(process, &QProcess::errorOccurred,
             this, [this](QProcess::ProcessError error) {
-        emit showOutput(tr("[Task %1 error occurred with code %2]").arg(getLabel(), QString::number(error)));
+        emit showOutput(tr("[Task %1 error occurred with code %2]\n").arg(getLabel(), QString::number(error)));
     });
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this, process](int exitCode) {
@@ -453,24 +456,61 @@ QStringList Task::spaceQuote(const QStringList &p_list, const QString &p_chars)
 QString Task::replaceVariables(const QString &p_text) const
 {
     auto cmd = p_text;
-    auto notebookFolder = getCurrentNotebookFolder();
-    auto file = getCurrentFile();
-    auto fileInfo = QFileInfo(file);
-    auto fileBasename = fileInfo.fileName();
-    auto fileBasenameNoExtension = fileInfo.baseName();
-    auto fileDirname = fileInfo.dir().absolutePath();
-    auto fileExtname = "." + fileInfo.suffix();
     
-    cmd.replace("${notebookFolder}", notebookFolder);
-    cmd.replace("${notebookFolderBasename}", QDir(notebookFolder).dirName());
-    cmd.replace("${file}", normalPath(file));
-    cmd.replace("${fileBasename}", fileBasename);
-    cmd.replace("${fileBasenameNoExtension}", fileBasenameNoExtension);
-    cmd.replace("${fileDirname}", normalPath(fileDirname));
-    cmd.replace("${fileExtname}", fileExtname);
+    auto replace = [&cmd](const QString &p_name, const QString &p_value, bool p_isPath = false) {
+        auto reg = QRegularExpression(QString(R"(\$\{[\t ]*%1[\t ]*\})").arg(p_name));
+        cmd.replace(reg, p_isPath ? normalPath(p_value) : p_value);
+    };
+    
+    // current notebook variables
+    {
+        auto notebook = getCurrentNotebook();
+        if (notebook) {
+            auto folder = notebook->getRootFolderAbsolutePath();
+            replace("notebookFolder", folder, true);
+            replace("notebookFolderBasename", QDir(folder).dirName());
+            replace("notebookName", notebook->getName());
+            replace("notebookDescription", notebook->getDescription());
+        }
+    }
+    
+    // current file variables
+    {
+        auto file = getCurrentFile();
+        replace("file", file, true);
+        auto folder = getFileNotebookFolder(file);
+        replace("fileNotebookFolder", folder, true);
+        replace("relativeFile", QDir(folder).relativeFilePath(file));
+        auto info = QFileInfo(file);
+        replace("fileBasename", info.fileName());
+        replace("fileBasenameNoExtension", info.baseName());
+        replace("fileDirname", info.dir().absolutePath(), true);
+        replace("fileExtname", "." + info.suffix());
+    }
+    
+    // current edit variables
+    {
+        replace("selectedText", getSelectedText());
+    }
+    // task variables
+    replace("cwd", getOptionsCwd(), true);
+    replace("taskFile", m_file, true);
+    replace("taskDirname", QFileInfo(m_file).dir().absolutePath(), true);
+    
+    
+    // vnote variables
+    replace("execPath", qApp->applicationFilePath(), true);
+    
+#ifdef Q_OS_WIN
+    replace("pathSeparator", "\\");
+#else
+    replace("pathSeparator", "/");
+#endif
     
     // Magic variables
-    cmd.replace("${magic:datetime}", QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"));
+    replace("magic:datetime", QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"));
+    replace("magic:date", QDateTime::currentDateTime().toString("yyyy-MM-dd"));
+    replace("magic:time", QDateTime::currentDateTime().toString("hh:mm:ss"));
     
     cmd = replaceInputVariables(cmd);
     return cmd;
@@ -590,10 +630,43 @@ QString Task::getCurrentFile()
     return file;
 }
 
-QString Task::getCurrentNotebookFolder()
-{    
+QSharedPointer<Notebook> Task::getCurrentNotebook()
+{
     const auto &notebookMgr = VNoteX::getInst().getNotebookMgr();
-    return notebookMgr.getCurrentNotebookFolder();
+    auto id = notebookMgr.getCurrentNotebookId();
+    if (id == Notebook::InvalidId) return nullptr;
+    return notebookMgr.findNotebookById(id);
+}
+
+QString Task::getFileNotebookFolder(const QString p_currentFile)
+{
+    const auto &notebookMgr = VNoteX::getInst().getNotebookMgr();
+    const auto &notebooks = notebookMgr.getNotebooks();
+    for (auto notebook : notebooks) {
+        auto rootPath = notebook->getRootFolderAbsolutePath();
+        if (PathUtils::pathContains(rootPath, p_currentFile)) {
+            return rootPath;
+        }
+    }
+    return QString();
+}
+
+QString Task::getSelectedText()
+{
+    auto window = VNoteX::getInst().getMainWindow()->getViewArea()->getCurrentViewWindow();
+    {
+        auto win = dynamic_cast<MarkdownViewWindow*>(window);
+        if (win) {
+            return win->selectedText();
+        }
+    }
+    {
+        auto win = dynamic_cast<TextViewWindow*>(window);
+        if (win) {
+            return win->selectedText();
+        }
+    }
+    return QString();
 }
 
 bool Task::isValidTaskFile(const QString &p_file, 
@@ -601,8 +674,7 @@ bool Task::isValidTaskFile(const QString &p_file,
 {
     QFile file(p_file);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        Exception::throwOne(Exception::Type::FailToReadFile,
-                            QString("fail to read file: %1").arg(p_file));
+        return false;
     }
     QJsonParseError error;
     p_json = QJsonDocument::fromJson(file.readAll(), &error);
@@ -622,7 +694,7 @@ QString Task::getLocaleString(const QJsonValue &p_value, const QString &p_locale
         auto obj = p_value.toObject();
         if (obj.contains(p_locale)) {
             return obj.value(p_locale).toString();
-        } else{
+        } else {
             qWarning() << "current locale" << p_locale << "not found";
             if (!obj.isEmpty()){
                 return obj.begin().value().toString();

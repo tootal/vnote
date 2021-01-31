@@ -18,9 +18,12 @@ namespace vnotex
         
         explicit TaskMgr(QObject *parent = nullptr);
         
-        const QVector<Task*> &getAllTasks() const;
+        // It will be invoked after MainWindow show
+        void init();
         
         void refresh();
+        
+        const QVector<Task*> &getAllTasks() const;
         
         void deleteTask(Task *p_task);
         
@@ -34,7 +37,9 @@ namespace vnotex
         
         void clearWatchPaths();
         
-        void onTaskChanged();
+        void addAllTaskFolder();
+        
+        void loadAllTask();
         
         void watchTaskEntrys();
         
