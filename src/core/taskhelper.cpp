@@ -99,6 +99,17 @@ QStringList TaskHelper::getAllSpecialVariables(const QString &p_name, const QStr
     return list;
 }
 
+QString TaskHelper::replaceAllSepcialVariables(const QString &p_name, 
+                                               const QString &p_text, 
+                                               const QMap<QString, QString> &p_map)
+{
+    auto text = p_text;
+    for (auto i = p_map.begin(); i != p_map.end(); i++) {
+        text.replace(QString(R"(\$\{[\t ]*%1[\t ]*:[\t ]*%2[\t ]*\})").arg(p_name, i.key()), i.value());
+    }
+    return text;
+}
+
 QString TaskHelper::getPathSeparator()
 {
 #if defined (Q_OS_WIN)

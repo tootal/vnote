@@ -34,6 +34,10 @@ public:
     static QString getSelectedText();
 
     static QStringList getAllSpecialVariables(const QString &p_name, const QString &p_text);
+    
+    static QString replaceAllSepcialVariables(const QString &p_name,
+                                              const QString &p_text,
+                                              const QMap<QString, QString> &p_map);
 
     static QString getPathSeparator();
     

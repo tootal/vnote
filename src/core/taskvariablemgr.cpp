@@ -100,7 +100,14 @@ QString TaskVariableMgr::evaluate(const QString &p_text,
     
     // environment variables
     {
-        
+        QMap<QString, QString> map;
+        auto list = TaskHelper::getAllSpecialVariables("env", p_text);
+        list.erase(std::unique(list.begin(), list.end()), list.end());
+        for (const auto &name : list) {
+            auto value = QProcessEnvironment::systemEnvironment().value(name);
+            map.insert(name, value);
+        }
+        TaskHelper::replaceAllSepcialVariables("env", text, map);
     }
     
     text = evaluateInputVariables(text, p_task);
@@ -178,10 +185,6 @@ QString TaskVariableMgr::evaluateInputVariables(const QString &p_text,
         }
         map.insert(input.m_id, text);
     }
-    auto text = p_text;
-    for (auto i = map.begin(); i != map.end(); i++) {
-        text.replace(QString("${input:%1}").arg(i.key()), i.value());
-    }
-    return text;
+    return TaskHelper::replaceAllSepcialVariables("input", p_text, map);
 }
 
