@@ -14,18 +14,15 @@
 #include "utils/fileutils.h"
 #include "utils/pathutils.h"
 #include "vnotex.h"
-#include "notebookmgr.h"
 #include "exception.h"
-#include <widgets/mainwindow.h>
-#include <widgets/viewarea.h>
-#include <widgets/viewwindow.h>
-#include <widgets/dialogs/selectdialog.h>
-#include <widgets/markdownviewwindow.h>
-#include <widgets/textviewwindow.h>
+#include "taskhelper.h"
+#include "notebook/notebook.h"
+
 
 using namespace vnotex;
 
 QString Task::s_latestVersion = "0.1.3";
+TaskVariableMgr Task::s_vars;
 
 Task *Task::fromFile(const QString &p_file, 
                      const QJsonDocument &p_json,
@@ -188,20 +185,20 @@ Task *Task::fromJsonV0(Task *p_task,
     }
     
     // OS-specific task configuration
-    QString os_str;
 #if defined (Q_OS_WIN)
-    os_str = "windows";
+#define OS_SPEC "windows"
 #endif
 #if defined (Q_OS_MACOS)
-    os_str = "osx";
+#define OS_SPEC "osx"
 #endif
 #if defined (Q_OS_LINUX)
-    os_str = "linux";
+#define OS_SPEC "linux"
 #endif
-    if (p_obj.contains(os_str)) {
-        auto os = p_obj[os_str].toObject();
+    if (p_obj.contains(OS_SPEC)) {
+        auto os = p_obj[OS_SPEC].toObject();
         fromJsonV0(p_task, os, true);
     }
+#undef OS_SPEC
 
     return p_task;
 }
@@ -218,12 +215,12 @@ QString Task::getType() const
 
 QString Task::getCommand() const
 {
-    return replaceVariables(m_command);
+    return s_vars.evaluate(m_command, this);
 }
 
 QStringList Task::getArgs() const
 {
-    return replaceVariables(m_args);
+    return s_vars.evaluate(m_args, this);
 }
 
 QString Task::getLabel() const
@@ -245,14 +242,14 @@ QString Task::getOptionsCwd() const
 {
     auto cwd = m_options_cwd;
     if (!cwd.isNull()) {
-        return replaceVariables(cwd);
+        return s_vars.evaluate(cwd, this);
     }
-    auto notebook = getCurrentNotebook();
+    auto notebook = TaskHelper::getCurrentNotebook();
     if (notebook) cwd = notebook->getRootFolderAbsolutePath();
     if (!cwd.isNull()) {
         return cwd;
     }
-    cwd = getCurrentFile();
+    cwd = TaskHelper::getCurrentFile();
     if (!cwd.isNull()) {
         return QFileInfo(cwd).dir().absolutePath();
     }
@@ -279,7 +276,7 @@ QStringList Task::getOptionsShellArgs() const
     if (m_options_shell_args.isEmpty()) {
         return defaultShellArgs(getShell());
     } else {
-        return replaceVariables(m_options_shell_args);
+        return s_vars.evaluate(m_options_shell_args, this);
     }
 }    
 
@@ -363,7 +360,7 @@ QProcess *Task::setupProcess() const
         // space quote
         if (!command.isEmpty() && !args.isEmpty()) {
             QString chars = "\"";
-            args = spaceQuote(args, chars);
+            args = TaskHelper::spaceQuote(args, chars);
         }
         QStringList allArgs;
         process->setProgram(getOptionsShellExecutable());
@@ -430,187 +427,6 @@ QStringList Task::defaultShellArgs(const QString &p_shell)
     return {};
 }
 
-QString Task::normalPath(const QString &p_path)
-{
-    auto path = p_path;
-#if defined (Q_OS_WIN)
-    path.replace('/', '\\');
-#endif
-    return path;    
-}
-
-QString Task::spaceQuote(const QString &p_text, const QString &p_chars)
-{
-    if (p_text.contains(' ')) return p_chars + p_text + p_chars;
-    return p_text;
-}
-
-QStringList Task::spaceQuote(const QStringList &p_list, const QString &p_chars)
-{
-    QStringList list;
-    for (auto s : p_list) {
-        list << spaceQuote(s, p_chars);
-    }
-    return list;
-}
-
-QString Task::replaceVariables(const QString &p_text) const
-{
-    auto cmd = p_text;
-    
-    auto replace = [&cmd](const QString &p_name, const QString &p_value, bool p_isPath = false) {
-        auto reg = QRegularExpression(QString(R"(\$\{[\t ]*%1[\t ]*\})").arg(p_name));
-        cmd.replace(reg, p_isPath ? normalPath(p_value) : p_value);
-    };
-    
-    // current notebook variables
-    {
-        auto notebook = getCurrentNotebook();
-        if (notebook) {
-            auto folder = notebook->getRootFolderAbsolutePath();
-            replace("notebookFolder", folder, true);
-            replace("notebookFolderBasename", QDir(folder).dirName());
-            replace("notebookName", notebook->getName());
-            replace("notebookDescription", notebook->getDescription());
-        }
-    }
-    
-    // current file variables
-    auto curFile = getCurrentFile();
-    auto curInfo = QFileInfo(curFile);
-    {
-        replace("file", curFile, true);
-        auto folder = getFileNotebookFolder(curFile);
-        replace("fileNotebookFolder", folder, true);
-        replace("relativeFile", QDir(folder).relativeFilePath(curFile));
-        replace("fileBasename", curInfo.fileName());
-        replace("fileBasenameNoExtension", curInfo.baseName());
-        replace("fileDirname", curInfo.dir().absolutePath(), true);
-        replace("fileExtname", "." + curInfo.suffix());
-    }
-    
-    // current edit variables
-    {
-        replace("selectedText", getSelectedText());
-    }
-    // task variables
-    replace("cwd", getOptionsCwd(), true);
-    replace("taskFile", m_file, true);
-    replace("taskDirname", QFileInfo(m_file).dir().absolutePath(), true);
-    
-    
-    // vnote variables
-    replace("execPath", qApp->applicationFilePath(), true);
-    
-#ifdef Q_OS_WIN
-    replace("pathSeparator", "\\");
-#else
-    replace("pathSeparator", "/");
-#endif
-    
-    // Magic variables
-    {
-        auto cDT = QDateTime::currentDateTime();
-        for(auto s : {
-            "d", "dd", "ddd", "dddd", "M", "MM", "MMM", "MMMM", 
-            "yy", "yyyy", "h", "hh", "H", "HH", "m", "mm", 
-            "s", "ss", "z", "zzz", "AP", "A", "ap", "a"
-        }) replace(QString("magic:%1").arg(s), cDT.toString(s)); 
-        replace("magic:random", QString::number(QRandomGenerator::global()->generate()));
-        replace("magic:random_d", QString::number(QRandomGenerator::global()->generate()));
-        replace("magic:date", cDT.toString("yyyy-MM-dd"));
-        replace("magic:da", cDT.toString("yyyyMMdd"));
-        replace("magic:time", cDT.toString("hh:mm:ss"));
-        replace("magic:datetime", cDT.toString("yyyy-MM-dd hh:mm:ss"));
-        replace("magic:dt", cDT.toString("yyyyMMdd hh:mm:ss"));
-        replace("magic:note", curInfo.fileName());
-        replace("magic:no", curInfo.completeBaseName());
-        replace("magic:t", curInfo.completeBaseName());
-        replace("magic:w", QString::number(cDT.date().weekNumber()));
-        // TODO: replace("magic:att", "undefined");
-    }
-    
-    cmd = replaceInputVariables(cmd);
-    return cmd;
-}
-
-QStringList Task::replaceVariables(const QStringList &p_list) const
-{
-    QStringList list;
-    for (auto s : p_list) {
-        s = replaceVariables(s);
-        if (!s.isEmpty()) list << s;
-    }
-    return list;
-}
-
-QStringList Task::getAllInputVariables(const QString &p_text) const
-{
-    QStringList list;
-    QRegularExpression re(R"(\$\{input:(.*?)\})");
-    auto it = re.globalMatch(p_text);
-    while (it.hasNext()) {
-        auto match = it.next();
-        auto input = getInput(match.captured(1));
-        list << input.m_id;
-    }
-    list.erase(std::unique(list.begin(), list.end()), list.end());
-    return list;
-}
-
-QMap<QString, QString> Task::evaluateInputVariables(const QString &p_text) const
-{
-    QMap<QString, QString> map;
-    auto list = getAllInputVariables(p_text);
-    for (const auto &id : list) {
-        auto input = getInput(id);
-        QString text;
-        auto mainwin = VNoteX::getInst().getMainWindow();
-        if (input.m_type == "promptString") {
-            auto desc = replaceVariables(input.m_description);
-            auto defaultText = replaceVariables(input.m_default);
-            QInputDialog dialog(mainwin);
-            dialog.setInputMode(QInputDialog::TextInput);
-            if (input.m_password) dialog.setTextEchoMode(QLineEdit::Password);
-            else dialog.setTextEchoMode(QLineEdit::Normal);
-            dialog.setWindowTitle(getLabel());
-            dialog.setLabelText(desc);
-            dialog.setTextValue(defaultText);
-            if (dialog.exec() == QDialog::Accepted) {
-                text = dialog.textValue();
-            } else {
-                throw "TaskCancle";
-            }
-        } else if (input.m_type == "pickString") {
-            // TODO: select description
-            SelectDialog dialog(getLabel(), mainwin);
-            for (int i = 0; i < input.m_options.size(); i++) {
-                qDebug() << "addSelection" << input.m_options.at(i);
-                dialog.addSelection(input.m_options.at(i), i);
-            }
-    
-            if (dialog.exec() == QDialog::Accepted) {
-                int selection = dialog.getSelection();
-                text = input.m_options.at(selection);
-            } else {
-                throw "TaskCancle";
-            }
-        }
-        map.insert(input.m_id, text);
-    }
-    return map;
-}
-
-QString Task::replaceInputVariables(const QString &p_text) const
-{
-    auto map = evaluateInputVariables(p_text);
-    auto text = p_text;
-    for (auto i = map.begin(); i != map.end(); i++) {
-        text.replace(QString("${input:%1}").arg(i.key()), i.value());
-    }
-    return text;
-}
-
 QString Task::textDecode(const QByteArray &p_text)
 {
     static QByteArrayList codecNames = {
@@ -638,54 +454,6 @@ QString Task::textDecode(const QByteArray &p_text, const QByteArray &name)
     return QString();
 }
 
-QString Task::getCurrentFile()
-{
-    auto win = VNoteX::getInst().getMainWindow()->getViewArea()->getCurrentViewWindow();
-    QString file;
-    if (win && win->getBuffer()) {
-        file = win->getBuffer()->getPath();
-    }
-    return file;
-}
-
-QSharedPointer<Notebook> Task::getCurrentNotebook()
-{
-    const auto &notebookMgr = VNoteX::getInst().getNotebookMgr();
-    auto id = notebookMgr.getCurrentNotebookId();
-    if (id == Notebook::InvalidId) return nullptr;
-    return notebookMgr.findNotebookById(id);
-}
-
-QString Task::getFileNotebookFolder(const QString p_currentFile)
-{
-    const auto &notebookMgr = VNoteX::getInst().getNotebookMgr();
-    const auto &notebooks = notebookMgr.getNotebooks();
-    for (auto notebook : notebooks) {
-        auto rootPath = notebook->getRootFolderAbsolutePath();
-        if (PathUtils::pathContains(rootPath, p_currentFile)) {
-            return rootPath;
-        }
-    }
-    return QString();
-}
-
-QString Task::getSelectedText()
-{
-    auto window = VNoteX::getInst().getMainWindow()->getViewArea()->getCurrentViewWindow();
-    {
-        auto win = dynamic_cast<MarkdownViewWindow*>(window);
-        if (win) {
-            return win->selectedText();
-        }
-    }
-    {
-        auto win = dynamic_cast<TextViewWindow*>(window);
-        if (win) {
-            return win->selectedText();
-        }
-    }
-    return QString();
-}
 
 bool Task::isValidTaskFile(const QString &p_file, 
                            QJsonDocument &p_json)

@@ -13,6 +13,7 @@ include($$PWD/buffer/buffer.pri)
 SOURCES += \
     $$PWD/buffermgr.cpp \
     $$PWD/task.cpp \
+    $$PWD/taskhelper.cpp \
     $$PWD/taskmgr.cpp \
     $$PWD/configmgr.cpp \
     $$PWD/coreconfig.cpp \
@@ -22,6 +23,7 @@ SOURCES += \
     $$PWD/mainconfig.cpp \
     $$PWD/markdowneditorconfig.cpp \
     $$PWD/singleinstanceguard.cpp \
+    $$PWD/taskvariablemgr.cpp \
     $$PWD/texteditorconfig.cpp \
     $$PWD/vnotex.cpp \
     $$PWD/thememgr.cpp \
@@ -35,6 +37,7 @@ HEADERS += \
     $$PWD/ViewerResource.h \
     $$PWD/buffermgr.h \
     $$PWD/task.h \
+    $$PWD/taskhelper.h \
     $$PWD/taskmgr.h \
     $$PWD/configmgr.h \
     $$PWD/coreconfig.h \
@@ -48,6 +51,7 @@ HEADERS += \
     $$PWD/markdowneditorconfig.h \
     $$PWD/singleinstanceguard.h \
     $$PWD/iconfig.h \
+    $$PWD/taskvariablemgr.h \
     $$PWD/texteditorconfig.h \
     $$PWD/vnotex.h \
     $$PWD/thememgr.h \

@@ -7,6 +7,8 @@
 #include <QMap>
 #include <QProcess>
 
+#include "taskvariablemgr.h"
+
 class QAction;
 
 namespace vnotex {
@@ -96,43 +98,11 @@ namespace vnotex {
         
         QProcess *setupProcess() const;
         
-        QString replaceVariables(const QString &p_text) const;
-        
-        QStringList replaceVariables(const QStringList &p_list) const;
-        
-        QStringList getAllInputVariables(const QString &p_text) const;
-        
-        QMap<QString, QString> evaluateInputVariables(const QString &p_text) const;
-        
-        QString replaceInputVariables(const QString &p_text) const;
-        
         static QString textDecode(const QByteArray &p_text);
         
         static QString textDecode(const QByteArray &p_text, const QByteArray &name);
         
         static QStringList defaultShellArgs(const QString &p_shell);
-        
-        /**
-         * windows use \
-         * others use /
-         */
-        static QString normalPath(const QString &p_path);
-        
-        /**
-         * if p_text contain <space>
-         * Wrap it in @p_chars.
-         */
-        static QString spaceQuote(const QString &p_text, const QString &p_chars = "\"");
-        
-        static QStringList spaceQuote(const QStringList &p_list, const QString &p_chars = "\"");
-        
-        static QString getCurrentFile();
-        
-        static QSharedPointer<Notebook> getCurrentNotebook();
-        
-        static QString getFileNotebookFolder(const QString p_currentFile);
-        
-        static QString getSelectedText();
         
         QString m_version;
         
@@ -165,6 +135,9 @@ namespace vnotex {
         QString m_file;
         
         QString m_locale;
+        
+        static TaskVariableMgr s_vars;
+
     };
 
 } // ns vnotex
