@@ -9,6 +9,7 @@
 #include <QRegularExpression>
 #include <QInputDialog>
 #include <QTextCodec>
+#include <QRandomGenerator>
 
 #include "utils/fileutils.h"
 #include "utils/pathutils.h"
@@ -475,17 +476,17 @@ QString Task::replaceVariables(const QString &p_text) const
     }
     
     // current file variables
+    auto curFile = getCurrentFile();
+    auto curInfo = QFileInfo(curFile);
     {
-        auto file = getCurrentFile();
-        replace("file", file, true);
-        auto folder = getFileNotebookFolder(file);
+        replace("file", curFile, true);
+        auto folder = getFileNotebookFolder(curFile);
         replace("fileNotebookFolder", folder, true);
-        replace("relativeFile", QDir(folder).relativeFilePath(file));
-        auto info = QFileInfo(file);
-        replace("fileBasename", info.fileName());
-        replace("fileBasenameNoExtension", info.baseName());
-        replace("fileDirname", info.dir().absolutePath(), true);
-        replace("fileExtname", "." + info.suffix());
+        replace("relativeFile", QDir(folder).relativeFilePath(curFile));
+        replace("fileBasename", curInfo.fileName());
+        replace("fileBasenameNoExtension", curInfo.baseName());
+        replace("fileDirname", curInfo.dir().absolutePath(), true);
+        replace("fileExtname", "." + curInfo.suffix());
     }
     
     // current edit variables
@@ -508,9 +509,26 @@ QString Task::replaceVariables(const QString &p_text) const
 #endif
     
     // Magic variables
-    replace("magic:datetime", QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"));
-    replace("magic:date", QDateTime::currentDateTime().toString("yyyy-MM-dd"));
-    replace("magic:time", QDateTime::currentDateTime().toString("hh:mm:ss"));
+    {
+        auto cDT = QDateTime::currentDateTime();
+        for(auto s : {
+            "d", "dd", "ddd", "dddd", "M", "MM", "MMM", "MMMM", 
+            "yy", "yyyy", "h", "hh", "H", "HH", "m", "mm", 
+            "s", "ss", "z", "zzz", "AP", "A", "ap", "a"
+        }) replace(QString("magic:%1").arg(s), cDT.toString(s)); 
+        replace("magic:random", QString::number(QRandomGenerator::global()->generate()));
+        replace("magic:random_d", QString::number(QRandomGenerator::global()->generate()));
+        replace("magic:date", cDT.toString("yyyy-MM-dd"));
+        replace("magic:da", cDT.toString("yyyyMMdd"));
+        replace("magic:time", cDT.toString("hh:mm:ss"));
+        replace("magic:datetime", cDT.toString("yyyy-MM-dd hh:mm:ss"));
+        replace("magic:dt", cDT.toString("yyyyMMdd hh:mm:ss"));
+        replace("magic:note", curInfo.fileName());
+        replace("magic:no", curInfo.completeBaseName());
+        replace("magic:t", curInfo.completeBaseName());
+        replace("magic:w", QString::number(cDT.date().weekNumber()));
+        // TODO: replace("magic:att", "undefined");
+    }
     
     cmd = replaceInputVariables(cmd);
     return cmd;
