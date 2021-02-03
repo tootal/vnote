@@ -51,6 +51,27 @@ void TaskMgr::addSearchPath(const QString &p_path)
     s_searchPaths << p_path;
 }
 
+QString TaskMgr::getNotebookTaskFolder()
+{
+    const auto &notebookMgr = VNoteX::getInst().getNotebookMgr();
+    auto id = notebookMgr.getCurrentNotebookId();
+    if (id == Notebook::InvalidId) return QString();
+    auto notebook = notebookMgr.findNotebookById(id);
+    if (!notebook) return QString();
+    auto configMgr = notebook->getConfigMgr();
+    if (!configMgr) return QString();
+    auto configMgrName = configMgr->getName();
+    if (configMgrName == "vx.vnotex") {
+        QDir dir(notebook->getRootFolderAbsolutePath());
+        dir.cd(BundleNotebookConfigMgr::getConfigFolderName());
+        if (!dir.cd("tasks")) return QString();
+        return dir.absolutePath();
+    } else {
+        qWarning() << "Unknow notebook config type"<< configMgrName <<"task will not be load.";
+    }
+    return QString();
+}
+
 void TaskMgr::addWatchPaths(const QStringList &list)
 {
     if (list.isEmpty()) return ;
@@ -75,28 +96,12 @@ void TaskMgr::addAllTaskFolder()
     s_searchPaths.clear();
     auto &configMgr = ConfigMgr::getInst();
     // App scope task folder
-    TaskMgr::addSearchPath(configMgr.getAppTaskFolder());
+    addSearchPath(configMgr.getAppTaskFolder());
     // User scope task folder
-    TaskMgr::addSearchPath(configMgr.getUserTaskFolder());
+    addSearchPath(configMgr.getUserTaskFolder());
     // Notebook scope task folder
-    const auto &notebookMgr = VNoteX::getInst().getNotebookMgr();
-    auto id = notebookMgr.getCurrentNotebookId();
-    do {
-        if (id == Notebook::InvalidId) break;
-        auto notebook = notebookMgr.findNotebookById(id);
-        if (!notebook) break;
-        auto configMgr = notebook->getConfigMgr();
-        if (!configMgr) break;
-        auto configMgrName = configMgr->getName();
-        if (configMgrName == "vx.vnotex") {
-            QDir dir(notebook->getRootFolderAbsolutePath());
-            dir.cd(BundleNotebookConfigMgr::getConfigFolderName());
-            if (!dir.cd("tasks")) break;
-            addSearchPath(dir.absolutePath());
-        } else {
-            qWarning() << "Unknow notebook config type"<< configMgrName <<"task will not be load.";
-        }
-    } while(0);
+    auto path = getNotebookTaskFolder();
+    if (!path.isNull()) addSearchPath(path);
 }
 
 void TaskMgr::loadAllTask()

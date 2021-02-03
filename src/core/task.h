@@ -54,8 +54,6 @@ namespace vnotex {
         
         const QMap<QString, QString> &getOptionsEnv() const;
         
-        QString getShell() const;
-        
         QString getOptionsShellExecutable() const;
         
         QStringList getOptionsShellArgs() const;
@@ -101,8 +99,6 @@ namespace vnotex {
         static QString textDecode(const QByteArray &p_text);
         
         static QString textDecode(const QByteArray &p_text, const QByteArray &name);
-        
-        static QStringList defaultShellArgs(const QString &p_shell);
         
         QString m_version;
         

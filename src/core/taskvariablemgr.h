@@ -61,6 +61,9 @@ private:
     QString evaluateInputVariables(const QString &p_text, 
                                    const Task *p_task) const;
     
+    QString evaluateShellVariables(const QString &p_text,
+                                   const Task *p_task) const;
+    
     QHash<QString, TaskVariable> m_predefs;
     bool m_initialized;
 };

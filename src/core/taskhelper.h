@@ -15,16 +15,7 @@ public:
     // helper functions
     
     static QString normalPath(const QString &p_text);
-    /**
-     * if p_text contain <space>
-     * Wrap it in @p_chars.
-     */
-    static QString spaceQuote(const QString &p_text,
-                              const QString &p_chars = "\"");
-    
-    static QStringList spaceQuote(QStringList &p_list,
-                                  const QString &p_chars = "\"");
-    
+
     static QString getCurrentFile();
     
     static QSharedPointer<Notebook> getCurrentNotebook();

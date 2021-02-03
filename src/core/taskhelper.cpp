@@ -23,23 +23,6 @@ QString TaskHelper::normalPath(const QString &p_text)
     return p_text; 
 }
 
-QString TaskHelper::spaceQuote(const QString &p_text, const QString &p_chars)
-{
-    if (p_text.contains(' ')) {
-        return QString("%1%2%1").arg(p_chars, p_text);
-    }
-    return p_text;
-}
-
-QStringList TaskHelper::spaceQuote(QStringList &p_list, const QString &p_chars)
-{
-    QStringList list;
-    for (const auto &s : p_list) {
-        list << spaceQuote(s, p_chars);
-    }
-    return list;
-}
-
 QString TaskHelper::getCurrentFile()
 {
     auto win = VNoteX::getInst().getMainWindow()->getViewArea()->getCurrentViewWindow();

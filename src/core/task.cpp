@@ -17,6 +17,7 @@
 #include "exception.h"
 #include "taskhelper.h"
 #include "notebook/notebook.h"
+#include "shellexecution.h"
 
 
 using namespace vnotex;
@@ -261,11 +262,6 @@ const QMap<QString, QString> &Task::getOptionsEnv() const
     return m_options_env;
 }
 
-QString Task::getShell() const
-{
-    return QFileInfo(m_options_shell_executable).baseName().toLower();
-}
-
 QString Task::getOptionsShellExecutable() const
 {
     return m_options_shell_executable;
@@ -274,7 +270,7 @@ QString Task::getOptionsShellExecutable() const
 QStringList Task::getOptionsShellArgs() const
 {
     if (m_options_shell_args.isEmpty()) {
-        return defaultShellArgs(getShell());
+        return ShellExecution::defaultShellArguments(m_options_shell_executable);
     } else {
         return s_vars.evaluate(m_options_shell_args, this);
     }
@@ -315,11 +311,8 @@ Task::Task(const QString &p_locale,
     m_file = p_file;
     m_version = s_latestVersion;
     m_type = "shell";
-#ifdef Q_OS_WIN
-    m_options_shell_executable = "PowerShell.exe";
-#else
-    m_options_shell_executable = "/bin/bash";
-#endif
+    m_options_shell_executable = ShellExecution::defaultShell();
+
     
     // inherit configuration
     m_parent = qobject_cast<Task*>(p_parent);
@@ -361,25 +354,15 @@ QProcess *Task::setupProcess() const
     }
     
     auto args = getArgs();
-    auto shell = getShell();
     auto type = getType();
     
     // set program and args
     if (type == "shell") {
-        // space quote
-        if (!command.isEmpty() && !args.isEmpty()) {
-            QString chars = "\"";
-            args = TaskHelper::spaceQuote(args, chars);
-        }
-        QStringList allArgs;
-        process->setProgram(getOptionsShellExecutable());
-        allArgs << getOptionsShellArgs();
-        if (shell == "bash") {
-            allArgs << (QStringList() << command << args).join(' ').replace("\"", "\\\"");
-        } else {
-            allArgs << command << args;
-        }
-        process->setArguments(allArgs);
+        ShellExecution::setupProcess(process,
+                                     command,
+                                     args,
+                                     getOptionsShellExecutable(),
+                                     getOptionsShellArgs());
     } else if (getType() == "process") {
         process->setProgram(command);
         process->setArguments(args);
@@ -422,18 +405,6 @@ void Task::run() const
         qInfo() << "run task" << process->program() << process->arguments();
         process->start();
     }
-}
-
-QStringList Task::defaultShellArgs(const QString &p_shell)
-{
-    if (p_shell == "cmd") {
-        return {"/C"};
-    } else if (p_shell == "powershell" || p_shell == "pwsh") {
-        return {"-Command"};
-    } else if (p_shell == "bash") {
-        return {"-c"};
-    }
-    return {};
 }
 
 QString Task::textDecode(const QByteArray &p_text)

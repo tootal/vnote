@@ -29,6 +29,8 @@ namespace vnotex
         
         static void addSearchPath(const QString &p_path);
         
+        static QString getNotebookTaskFolder();
+        
     signals:
         void taskChanged();
         

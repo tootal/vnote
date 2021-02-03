@@ -4,10 +4,12 @@
 #include <QInputDialog>
 #include <QApplication>
 #include <QRandomGenerator>
+#include <QTimeZone>
 
 #include "vnotex.h"
 #include "task.h"
 #include "taskhelper.h"
+#include "shellexecution.h"
 #include "configmgr.h"
 #include "mainconfig.h"
 #include "notebook/notebook.h"
@@ -41,41 +43,111 @@ QString TaskVariableMgr::evaluate(const QString &p_text,
                                    const Task *p_task) const
 {
     auto text = p_text;
-    auto replace = [&text](const QString &p_name, const QString &p_value, bool p_isPath = false) {
+    auto eval = [&text](const QString &p_name, std::function<QString()> p_func) {
         auto reg = QRegularExpression(QString(R"(\$\{[\t ]*%1[\t ]*\})").arg(p_name));
-        text.replace(reg, p_isPath ? TaskHelper::normalPath(p_value) : p_value);
+        if (text.contains(reg)) {
+            text.replace(reg, p_func());
+        }
     };
     
     // current notebook variables
     {
-        auto notebook = TaskHelper::getCurrentNotebook();
-        if (notebook) {
-            auto folder = notebook->getRootFolderAbsolutePath();
-            replace("notebookFolder", folder, true);
-            replace("notebookFolderBasename", QDir(folder).dirName());
-            replace("notebookName", notebook->getName());
-            replace("notebookDescription", notebook->getDescription());
-        }
+        eval("notebookFolder", []() { 
+            auto notebook = TaskHelper::getCurrentNotebook();
+            if (notebook) {
+                return TaskHelper::normalPath(notebook->getRootFolderAbsolutePath()); 
+            } else return QString();
+        });
+        eval("notebookFolderBasename", []() { 
+            auto notebook = TaskHelper::getCurrentNotebook();
+            if (notebook) {
+                auto folder = notebook->getRootFolderAbsolutePath();
+                return QDir(folder).dirName(); 
+            } else return QString();
+        });
+        eval("notebookName", []() { 
+            auto notebook = TaskHelper::getCurrentNotebook();
+            if (notebook) {
+                return notebook->getName(); 
+            } else return QString();
+        });
+        eval("notebookName", []() { 
+            auto notebook = TaskHelper::getCurrentNotebook();
+            if (notebook) {
+                return notebook->getDescription(); 
+            } else return QString();
+        });
     }
     
     // current file variables
-    auto curFile = TaskHelper::getCurrentFile();
-    auto curInfo = QFileInfo(curFile);
     {
-        replace("file", curFile, true);
-        auto folder = TaskHelper::getFileNotebookFolder(curFile);
-        replace("fileNotebookFolder", folder, true);
-        replace("relativeFile", QDir(folder).relativeFilePath(curFile));
-        replace("fileBasename", curInfo.fileName());
-        replace("fileBasenameNoExtension", curInfo.baseName());
-        replace("fileDirname", curInfo.dir().absolutePath(), true);
-        replace("fileExtname", "." + curInfo.suffix());
-        replace("selectedText", TaskHelper::getSelectedText());
-        replace("cwd", p_task->getOptionsCwd(), true);
-        replace("taskFile", p_task->getFile(), true);
-        replace("taskDirname", QFileInfo(p_task->getFile()).dir().absolutePath(), true);
-        replace("execPath", qApp->applicationFilePath(), true);
-        replace("pathSeparator", TaskHelper::getPathSeparator());
+        eval("file", []() { 
+            return TaskHelper::normalPath(TaskHelper::getCurrentFile()); 
+        });
+        eval("fileNotebookFolder", []() {
+            auto file = TaskHelper::getCurrentFile();
+            return TaskHelper::normalPath(TaskHelper::getFileNotebookFolder(file)); 
+        });
+        eval("relativeFile", []() {
+            auto file = TaskHelper::getCurrentFile();
+            auto folder = TaskHelper::getFileNotebookFolder(file);
+            return QDir(folder).relativeFilePath(file); 
+        });
+        eval("fileBasename", []() {
+            auto file = TaskHelper::getCurrentFile();
+            return QFileInfo(file).fileName();
+        });
+        eval("fileBasename", []() {
+            auto file = TaskHelper::getCurrentFile();
+            return QFileInfo(file).completeBaseName();
+        });
+        eval("fileDirname", []() {
+            auto file = TaskHelper::getCurrentFile();
+            return TaskHelper::normalPath(QFileInfo(file).dir().absolutePath());
+        });
+        eval("fileExtname", []() {
+            auto file = TaskHelper::getCurrentFile();
+            return QFileInfo(file).suffix();
+        });
+        eval("selectedText", []() {
+            return TaskHelper::getSelectedText();
+        });
+        eval("cwd", [p_task]() { 
+            return TaskHelper::normalPath(p_task->getOptionsCwd()); 
+        });
+        eval("taskFile", [p_task]() { 
+            return TaskHelper::normalPath(p_task->getFile()); 
+        });
+        eval("taskDirname", [p_task]() { 
+            return TaskHelper::normalPath(QFileInfo(p_task->getFile()).dir().absolutePath());
+        });
+        eval("execPath", []() { 
+            return TaskHelper::normalPath(qApp->applicationFilePath()); 
+        });
+        eval("pathSeparator", []() { 
+            return TaskHelper::getPathSeparator(); 
+        });
+        eval("notebookTaskFolder", []() { 
+            return TaskHelper::normalPath(TaskMgr::getNotebookTaskFolder());
+        });
+        eval("userTaskFolder", []() { 
+            return TaskHelper::normalPath(ConfigMgr::getInst().getUserTaskFolder());
+        });
+        eval("appTaskFolder", []() { 
+            return TaskHelper::normalPath(ConfigMgr::getInst().getAppTaskFolder());
+        });
+        eval("userThemeFolder", []() { 
+            return TaskHelper::normalPath(ConfigMgr::getInst().getUserThemeFolder());
+        });
+        eval("appThemeFolder", []() { 
+            return TaskHelper::normalPath(ConfigMgr::getInst().getAppThemeFolder());
+        });
+        eval("userDocsFolder", []() { 
+            return TaskHelper::normalPath(ConfigMgr::getInst().getUserDocsFolder());
+        });
+        eval("appDocsFolder", []() { 
+            return TaskHelper::normalPath(ConfigMgr::getInst().getAppDocsFolder());
+        });
     }
     
     // Magic variables
@@ -85,19 +157,49 @@ QString TaskVariableMgr::evaluate(const QString &p_text,
             "d", "dd", "ddd", "dddd", "M", "MM", "MMM", "MMMM", 
             "yy", "yyyy", "h", "hh", "H", "HH", "m", "mm", 
             "s", "ss", "z", "zzz", "AP", "A", "ap", "a"
-        }) replace(QString("magic:%1").arg(s), cDT.toString(s)); 
-        replace("magic:random", QString::number(QRandomGenerator::global()->generate()));
-        replace("magic:random_d", QString::number(QRandomGenerator::global()->generate()));
-        replace("magic:date", cDT.toString("yyyy-MM-dd"));
-        replace("magic:da", cDT.toString("yyyyMMdd"));
-        replace("magic:time", cDT.toString("hh:mm:ss"));
-        replace("magic:datetime", cDT.toString("yyyy-MM-dd hh:mm:ss"));
-        replace("magic:dt", cDT.toString("yyyyMMdd hh:mm:ss"));
-        replace("magic:note", curInfo.fileName());
-        replace("magic:no", curInfo.completeBaseName());
-        replace("magic:t", curInfo.completeBaseName());
-        replace("magic:w", QString::number(cDT.date().weekNumber()));
-        // TODO: replace("magic:att", "undefined");
+        }) eval(QString("magic:%1").arg(s), [s]() {
+            return QDateTime::currentDateTime().toString(s);
+        }); 
+        eval("magic:random", []() {
+            return QString::number(QRandomGenerator::global()->generate());
+        });
+        eval("magic:random_d", []() {
+            return QString::number(QRandomGenerator::global()->generate());
+        });
+        eval("magic:date", []() {
+            return QDate::currentDate().toString("yyyy-MM-dd");
+        });
+        eval("magic:da", []() {
+            return QDate::currentDate().toString("yyyyMMdd");
+        });
+        eval("magic:time", []() {
+            return QTime::currentTime().toString("hh:mm:ss");
+        });
+        eval("magic:datetime", []() {
+            return QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+        });
+        eval("magic:dt", []() {
+            return QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss");
+        });
+        eval("magic:note", []() {
+            auto file = TaskHelper::getCurrentFile();
+            return QFileInfo(file).fileName();
+        });
+        eval("magic:no", []() {
+            auto file = TaskHelper::getCurrentFile();
+            return QFileInfo(file).completeBaseName();
+        });
+        eval("magic:t", []() {
+            auto dt = QDateTime::currentDateTime();
+            return dt.timeZone().displayName(dt, QTimeZone::ShortName);
+        });
+        eval("magic:w", []() {
+            return QString::number(QDate::currentDate().weekNumber());
+        });
+        eval("magic:att", []() {
+            // TODO
+            return QString();
+        });
     }
     
     // environment variables
@@ -130,6 +232,8 @@ QString TaskVariableMgr::evaluate(const QString &p_text,
     
     // input variables
     text = evaluateInputVariables(text, p_task);
+    // shell variables
+    text = evaluateShellVariables(text, p_task);
     return text;
 }
 
@@ -205,5 +309,26 @@ QString TaskVariableMgr::evaluateInputVariables(const QString &p_text,
         map.insert(input.m_id, text);
     }
     return TaskHelper::replaceAllSepcialVariables("input", p_text, map);
+}
+
+QString TaskVariableMgr::evaluateShellVariables(const QString &p_text, 
+                                                const Task *p_task) const
+{
+    QMap<QString, QString> map;
+    auto list = TaskHelper::getAllSpecialVariables("shell", p_text);
+    list.erase(std::unique(list.begin(), list.end()), list.end());
+    if (list.isEmpty()) return p_text;
+    for (const auto &cmd : list) {
+        QProcess process;
+        process.setWorkingDirectory(p_task->getOptionsCwd());
+        ShellExecution::setupProcess(&process, cmd);
+        process.start();
+        if (!process.waitForStarted(1000) || !process.waitForFinished(1000)) {
+            throw "Shell variable execution timeout";
+        }
+        auto res = process.readAllStandardOutput().trimmed();
+        map.insert(cmd, res);
+    }
+    return TaskHelper::replaceAllSepcialVariables("shell", p_text, map);
 }
 

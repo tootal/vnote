@@ -12,6 +12,7 @@ include($$PWD/buffer/buffer.pri)
 
 SOURCES += \
     $$PWD/buffermgr.cpp \
+    $$PWD/shellexecution.cpp \
     $$PWD/task.cpp \
     $$PWD/taskhelper.cpp \
     $$PWD/taskmgr.cpp \
@@ -36,6 +37,7 @@ SOURCES += \
 HEADERS += \
     $$PWD/ViewerResource.h \
     $$PWD/buffermgr.h \
+    $$PWD/shellexecution.h \
     $$PWD/task.h \
     $$PWD/taskhelper.h \
     $$PWD/taskmgr.h \
