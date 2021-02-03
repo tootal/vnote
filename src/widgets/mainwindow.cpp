@@ -454,6 +454,9 @@ void MainWindow::setupOutputViewer()
     
     connect(&VNoteX::getInst(), &VNoteX::showOutputRequested,
             m_outputViewer, [this](const QString &p_text) {
+        auto cursor = m_outputViewer->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        m_outputViewer->setTextCursor(cursor);
         m_outputViewer->insertPlainText(p_text);
         auto scrollBar = m_outputViewer->verticalScrollBar();
         if (scrollBar) {

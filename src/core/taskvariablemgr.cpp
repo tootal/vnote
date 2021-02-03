@@ -8,6 +8,8 @@
 #include "vnotex.h"
 #include "task.h"
 #include "taskhelper.h"
+#include "configmgr.h"
+#include "mainconfig.h"
 #include "notebook/notebook.h"
 #include <widgets/mainwindow.h>
 #include <widgets/dialogs/selectdialog.h>
@@ -99,17 +101,34 @@ QString TaskVariableMgr::evaluate(const QString &p_text,
     }
     
     // environment variables
-    {
+    do {
         QMap<QString, QString> map;
         auto list = TaskHelper::getAllSpecialVariables("env", p_text);
         list.erase(std::unique(list.begin(), list.end()), list.end());
+        if (list.isEmpty()) break;
         for (const auto &name : list) {
             auto value = QProcessEnvironment::systemEnvironment().value(name);
             map.insert(name, value);
         }
-        TaskHelper::replaceAllSepcialVariables("env", text, map);
-    }
+        text = TaskHelper::replaceAllSepcialVariables("env", text, map);
+    } while(0);
     
+    // config variables
+    do {
+        const auto config_obj = ConfigMgr::getInst().getConfig().toJson();
+        QMap<QString, QString> map;
+        auto list = TaskHelper::getAllSpecialVariables("config", p_text);
+        if (list.isEmpty()) break;
+        list.erase(std::unique(list.begin(), list.end()), list.end());
+        for (const auto &name : list) {
+            auto value = TaskHelper::evaluateJsonExpr(config_obj, name);
+            qDebug() << "insert" << name << value;
+            map.insert(name, value);
+        }
+        text = TaskHelper::replaceAllSepcialVariables("config", text, map);
+    } while(0);
+    
+    // input variables
     text = evaluateInputVariables(text, p_task);
     return text;
 }
@@ -149,6 +168,7 @@ QString TaskVariableMgr::evaluateInputVariables(const QString &p_text,
     QMap<QString, QString> map;
     auto list = TaskHelper::getAllSpecialVariables("input", p_text);
     list.erase(std::unique(list.begin(), list.end()), list.end());
+    if (list.isEmpty()) return p_text;
     for (const auto &id : list) {
         auto input = p_task->getInput(id);
         QString text;

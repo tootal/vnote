@@ -1,6 +1,7 @@
 #include "taskhelper.h"
 
 #include <QRegularExpression>
+#include <QJsonArray>
 
 #include "vnotex.h"
 #include "notebookmgr.h"
@@ -25,7 +26,7 @@ QString TaskHelper::normalPath(const QString &p_text)
 QString TaskHelper::spaceQuote(const QString &p_text, const QString &p_chars)
 {
     if (p_text.contains(' ')) {
-        return QString("%1%2%1").arg(p_chars, p_text, p_chars);
+        return QString("%1%2%1").arg(p_chars, p_text);
     }
     return p_text;
 }
@@ -105,9 +106,43 @@ QString TaskHelper::replaceAllSepcialVariables(const QString &p_name,
 {
     auto text = p_text;
     for (auto i = p_map.begin(); i != p_map.end(); i++) {
-        text.replace(QString(R"(\$\{[\t ]*%1[\t ]*:[\t ]*%2[\t ]*\})").arg(p_name, i.key()), i.value());
+        auto key = QString(i.key()).replace(".", "\\.").replace("[", "\\[").replace("]", "\\]");
+        auto pattern = QRegularExpression(QString(R"(\$\{[\t ]*%1[\t ]*:[\t ]*%2[\t ]*\})").arg(p_name, key));
+        text = text.replace(pattern, i.value());
     }
     return text;
+}
+
+QString TaskHelper::evaluateJsonExpr(const QJsonObject &p_obj, const QString &p_expr)
+{
+    QJsonValue value = p_obj;
+    for (auto token : p_expr.split('.')) {
+        auto pos = token.indexOf('[');
+        auto name = token.mid(0, pos);
+        value = value.toObject().value(name);
+        if (pos == -1) continue;
+        if (token.back() == ']') {
+            for (auto idx : token.mid(pos+1, token.length()-pos-2).split("][")) {
+                bool ok;
+                auto index = idx.toInt(&ok);
+                if (!ok) throw "Config variable syntax error!";
+                value = value.toArray().at(index);
+            }
+        } else {
+            throw "Config variable syntax error!";
+        }
+    }
+    if (value.isBool()) {
+        if (value.toBool()) return "true";
+        else return "false";
+    } else if (value.isDouble()) {
+        return QString::number(value.toDouble());
+    } else if (value.isNull()) {
+        return "null";
+    } else if (value.isUndefined()) {
+        return "undefined";
+    }
+    return value.toString();
 }
 
 QString TaskHelper::getPathSeparator()

@@ -39,6 +39,9 @@ public:
                                               const QString &p_text,
                                               const QMap<QString, QString> &p_map);
 
+    static QString evaluateJsonExpr(const QJsonObject &p_obj,
+                                    const QString &p_expr);
+    
     static QString getPathSeparator();
     
 private:
