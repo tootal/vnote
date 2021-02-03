@@ -105,7 +105,7 @@ Task *Task::fromJsonV0(Task *p_task,
             auto env = options["env"].toObject();
             for (auto i = env.begin(); i != env.end(); i++) {
                 auto key = i.key();
-                auto value = i.value().toString();
+                auto value = getLocaleString(i.value(), p_task->m_locale);
                 p_task->m_options_env.insert(key, value);
             }
         }
@@ -350,6 +350,15 @@ QProcess *Task::setupProcess() const
     auto process = new QProcess(this->parent());
     process->setProcessChannelMode(QProcess::MergedChannels);
     process->setWorkingDirectory(getOptionsCwd());
+    
+    auto options_env = getOptionsEnv();
+    if (!options_env.isEmpty()) {
+        auto env = QProcessEnvironment::systemEnvironment();
+        for (auto i = options_env.begin(); i != options_env.end(); i++) {
+            env.insert(i.key(), i.value());
+        }
+        process->setProcessEnvironment(env);
+    }
     
     auto args = getArgs();
     auto shell = getShell();

@@ -3,7 +3,7 @@ interface TaskConfiguration {
      * The configuration's version number
      * If omitted latest version is used.
      */
-    version?: '0.1.6';
+    version?: '0.1.7';
 
     /**
      * Windows specific task configuration
@@ -94,7 +94,7 @@ interface CommandOptions {
      * The environment of the executed program or shell.
      * If omitted the parent process' environment is used.
      */
-    env?: { [key: string]: string };
+    env?: { [key: string]: TranslatableString };
 
     /**
      * Configuration of the shell when task type is `shell`

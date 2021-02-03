@@ -12,10 +12,23 @@ SelectDialog::SelectDialog(const QString &p_title, QWidget *p_parent)
     setupUI(p_title);
 }
 
-void SelectDialog::setupUI(const QString &p_title)
+SelectDialog::SelectDialog(const QString &p_title, 
+                           const QString &p_text, 
+                           QWidget *p_parent)
+    : QDialog(p_parent)
+{
+    setupUI(p_title, p_text);
+}
+
+void SelectDialog::setupUI(const QString &p_title, const QString &p_text)
 {
     auto mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
+    
+    if (!p_text.isNull()) {
+        m_label = new QLabel(p_text, this);
+        mainLayout->addWidget(m_label);
+    }
 
     m_list = new QListWidget(this);
     m_list->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);

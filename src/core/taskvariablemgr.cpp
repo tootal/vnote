@@ -190,9 +190,8 @@ QString TaskVariableMgr::evaluateInputVariables(const QString &p_text,
             }
         } else if (input.m_type == "pickString") {
             // TODO: select description
-            SelectDialog dialog(p_task->getLabel(), mainwin);
+            SelectDialog dialog(p_task->getLabel(), input.m_description, mainwin);
             for (int i = 0; i < input.m_options.size(); i++) {
-                qDebug() << "addSelection" << input.m_options.at(i);
                 dialog.addSelection(input.m_options.at(i), i);
             }
     
