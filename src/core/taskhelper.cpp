@@ -2,6 +2,7 @@
 
 #include <QRegularExpression>
 #include <QJsonArray>
+#include <QMessageBox>
 
 #include "vnotex.h"
 #include "notebookmgr.h"
@@ -135,6 +136,50 @@ QString TaskHelper::getPathSeparator()
 #else
     return "/";
 #endif
+}
+
+QString TaskHelper::handleCommand(const QString &p_text, 
+                                  QProcess *p_process)
+{
+    QRegularExpression re(R"(^::([a-zA-Z-]+)(.*?)?::(.*?)$)", 
+                          QRegularExpression::MultilineOption);
+    auto i = re.globalMatch(p_text);
+    while (i.hasNext()) {
+        auto match = i.next();
+        auto cmd = match.captured(1).toLower();
+        auto args = match.captured(2).trimmed().split(',');
+        auto value = match.captured(3);
+        
+        QMap<QString, QString> arg;
+        for (auto i : args) {
+            auto s = i.trimmed();
+            auto p = s.indexOf('=');
+            auto name = s.mid(0, p);
+            QString val;
+            if (p != -1) {
+                val = s.mid(p+1);
+            }
+            arg.insert(name, val);
+        }
+        if (cmd == "show-info") {
+            QMessageBox::information(VNoteX::getInst().getMainWindow(),
+                                     arg.value("title"),
+                                     value);
+        } else if (cmd == "show-question") {
+            auto ret = QMessageBox::question(VNoteX::getInst().getMainWindow(),
+                                             arg.value("title"),
+                                             value);
+            if (p_process) {
+                if (p_process->state() == QProcess::Running) {
+                    p_process->write(QByteArray::number(ret)+"\n");
+                }
+            } else {
+                qWarning() << "process finished!";
+            }
+        }
+    }
+    auto text = p_text;
+    return text.replace(re, "");
 }
 
 TaskHelper::TaskHelper()

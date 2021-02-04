@@ -4,6 +4,7 @@
 #include <QString>
 #include <QSharedPointer>
 
+class QProcess;
 
 namespace vnotex {
 
@@ -34,6 +35,9 @@ public:
                                     const QString &p_expr);
     
     static QString getPathSeparator();
+    
+    static QString handleCommand(const QString &p_text,
+                                 QProcess *p_process);
     
 private:
     TaskHelper();

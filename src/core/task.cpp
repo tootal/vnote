@@ -341,7 +341,6 @@ QProcess *Task::setupProcess() const
     auto command = getCommand();
     if (command.isEmpty()) return nullptr;
     auto process = new QProcess(this->parent());
-    process->setProcessChannelMode(QProcess::MergedChannels);
     process->setWorkingDirectory(getOptionsCwd());
     
     auto options_env = getOptionsEnv();
@@ -375,7 +374,13 @@ QProcess *Task::setupProcess() const
     });
     connect(process, &QProcess::readyReadStandardOutput,
             this, [process, this]() {
-        auto text = process->readAllStandardOutput();
+        auto text = textDecode(process->readAllStandardOutput());
+        text = TaskHelper::handleCommand(text, process);
+        emit showOutput(text);
+    });
+    connect(process, &QProcess::readyReadStandardError,
+            this, [process, this]() {
+        auto text = process->readAllStandardError();
         emit showOutput(textDecode(text));
     });
     connect(process, &QProcess::errorOccurred,
@@ -383,7 +388,7 @@ QProcess *Task::setupProcess() const
         emit showOutput(tr("[Task %1 error occurred with code %2]\n").arg(getLabel(), QString::number(error)));
     });
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this, process](int exitCode) {
+            this, [this, &process](int exitCode) {
         emit showOutput(tr("\n[Task %1 finished with exit code %2]\n")
                         .arg(getLabel(), QString::number(exitCode)));
         process->deleteLater();
