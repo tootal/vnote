@@ -388,7 +388,7 @@ QProcess *Task::setupProcess() const
         emit showOutput(tr("[Task %1 error occurred with code %2]\n").arg(getLabel(), QString::number(error)));
     });
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this, &process](int exitCode) {
+            this, [this, process](int exitCode) {
         emit showOutput(tr("\n[Task %1 finished with exit code %2]\n")
                         .arg(getLabel(), QString::number(exitCode)));
         process->deleteLater();
