@@ -151,7 +151,7 @@ QString TaskHelper::handleCommand(const QString &p_text,
         auto value = match.captured(3);
         
         QMap<QString, QString> arg;
-        for (auto i : args) {
+        for (const auto &i : args) {
             auto s = i.trimmed();
             auto p = s.indexOf('=');
             auto name = s.mid(0, p);

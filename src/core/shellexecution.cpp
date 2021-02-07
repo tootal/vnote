@@ -49,7 +49,7 @@ void ShellExecution::setupProcess(QProcess *p_process,
     }
     QStringList allArgs(shell_args);
     if (shell == "bash") {
-        allArgs << (QStringList() << p_program << args).join(' ').replace("\"", "\\\"");
+        allArgs << (QStringList() << p_program << args).join(' ');
     } else {
         allArgs << p_program << args;
     }
