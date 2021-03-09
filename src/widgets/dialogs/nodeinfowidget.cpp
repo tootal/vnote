@@ -17,26 +17,26 @@ NodeInfoWidget::NodeInfoWidget(const Node *p_node, QWidget *p_parent)
     : QWidget(p_parent),
       m_mode(Mode::Edit)
 {
-    setupUI(p_node->getParent(), p_node->getType());
+    setupUI(p_node->getParent(), p_node->getFlags());
 
     setNode(p_node);
 }
 
 NodeInfoWidget::NodeInfoWidget(const Node *p_parentNode,
-                               Node::Type p_typeToCreate,
+                               Node::Flags p_flags,
                                QWidget *p_parent)
     : QWidget(p_parent),
       m_mode(Mode::Create)
 {
-    setupUI(p_parentNode, p_typeToCreate);
+    setupUI(p_parentNode, p_flags);
 }
 
-void NodeInfoWidget::setupUI(const Node *p_parentNode, Node::Type p_newNodeType)
+void NodeInfoWidget::setupUI(const Node *p_parentNode, Node::Flags p_newNodeFlags)
 {
     const bool createMode = m_mode == Mode::Create;
-    const bool isNote = p_newNodeType == Node::Type::File;
+    const bool isNote = p_newNodeFlags & Node::Flag::Content;
 
-    m_mainLayout = WidgetUtils::createFormLayout(this);
+    m_mainLayout = WidgetsFactory::createFormLayout(this);
 
     m_mainLayout->addRow(tr("Notebook:"),
                          new QLabel(p_parentNode->getNotebook()->getName(), this));
@@ -58,9 +58,7 @@ void NodeInfoWidget::setupUI(const Node *p_parentNode, Node::Type p_newNodeType)
     if (!createMode) {
         m_createdDateTimeLabel = new QLabel(this);
         m_mainLayout->addRow(tr("Created time:"), m_createdDateTimeLabel);
-    }
 
-    if (!createMode && isNote) {
         m_modifiedDateTimeLabel = new QLabel(this);
         m_mainLayout->addRow(tr("Modified time:"), m_modifiedDateTimeLabel);
     }
@@ -84,7 +82,7 @@ void NodeInfoWidget::setupNameLineEdit(QWidget *p_parent)
                         const auto &fileType = FileTypeHelper::getInst().getFileTypeBySuffix(suffix);
                         typeName = fileType.m_typeName;
                     } else {
-                        typeName = FileTypeHelper::getInst().getFileType(FileTypeHelper::Others).m_typeName;
+                        typeName = FileTypeHelper::getInst().getFileType(FileType::Others).m_typeName;
                     }
 
                     int idx = m_fileTypeComboBox->findData(typeName);
@@ -135,10 +133,8 @@ void NodeInfoWidget::setNode(const Node *p_node)
         auto createdTime = Utils::dateTimeString(m_node->getCreatedTimeUtc().toLocalTime());
         m_createdDateTimeLabel->setText(createdTime);
 
-        if (m_modifiedDateTimeLabel) {
-            auto modifiedTime = Utils::dateTimeString(m_node->getModifiedTimeUtc().toLocalTime());
-            m_modifiedDateTimeLabel->setText(modifiedTime);
-        }
+        auto modifiedTime = Utils::dateTimeString(m_node->getModifiedTimeUtc().toLocalTime());
+        m_modifiedDateTimeLabel->setText(modifiedTime);
     }
 }
 

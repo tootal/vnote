@@ -1,6 +1,11 @@
 #include "notebooknodeexplorer.h"
 
-#include <QtWidgets>
+#include <QTreeWidget>
+#include <QVBoxLayout>
+#include <QSplitter>
+#include <QTreeWidget>
+#include <QMenu>
+#include <QAction>
 
 #include <notebook/notebook.h>
 #include <notebook/node.h>
@@ -13,6 +18,7 @@
 #include "dialogs/notepropertiesdialog.h"
 #include "dialogs/folderpropertiesdialog.h"
 #include "dialogs/deleteconfirmdialog.h"
+#include "dialogs/sortdialog.h"
 #include <utils/widgetutils.h>
 #include <utils/pathutils.h>
 #include <utils/clipboardutils.h>
@@ -22,6 +28,8 @@
 
 #include <core/fileopenparameters.h>
 #include <core/events.h>
+#include <core/configmgr.h>
+#include <core/widgetconfig.h>
 
 using namespace vnotex;
 
@@ -333,7 +341,9 @@ void NotebookNodeExplorer::loadRootNode(const Node *p_node) const
         loadRecycleBinNode(recycleBinNode.data());
     }
 
-    for (auto &child : p_node->getChildren()) {
+    auto children = p_node->getChildren();
+    sortNodes(children);
+    for (auto &child : children) {
         if (recycleBinNode == child) {
             continue;
         }
@@ -374,7 +384,9 @@ void NotebookNodeExplorer::loadChildren(QTreeWidgetItem *p_item, Node *p_node, i
         return;
     }
 
-    for (auto &child : p_node->getChildren()) {
+    auto children = p_node->getChildren();
+    sortNodes(children);
+    for (auto &child : children) {
         auto item = new QTreeWidgetItem(p_item);
         loadNode(item, child.data(), p_level);
     }
@@ -382,6 +394,10 @@ void NotebookNodeExplorer::loadChildren(QTreeWidgetItem *p_item, Node *p_node, i
 
 void NotebookNodeExplorer::loadRecycleBinNode(Node *p_node) const
 {
+    if (!m_recycleBinNodeVisible) {
+        return;
+    }
+
     auto item = new QTreeWidgetItem();
     item->setWhatsThis(Column::Name,
                        tr("Recycle bin of this notebook. Deleted files could be found here. "
@@ -394,6 +410,10 @@ void NotebookNodeExplorer::loadRecycleBinNode(Node *p_node) const
 
 void NotebookNodeExplorer::loadRecycleBinNode(QTreeWidgetItem *p_item, Node *p_node, int p_level) const
 {
+    if (!m_recycleBinNodeVisible) {
+        return;
+    }
+
     if (!p_node->isLoaded()) {
         p_node->load();
     }
@@ -419,18 +439,14 @@ void NotebookNodeExplorer::fillTreeItem(QTreeWidgetItem *p_item, Node *p_node, b
 
 QIcon NotebookNodeExplorer::getNodeItemIcon(const Node *p_node) const
 {
-    switch (p_node->getType()) {
-    case Node::Type::File:
+    if (p_node->hasContent()) {
         return s_fileNodeIcon;
-
-    case Node::Type::Folder:
-    {
+    } else {
         if (p_node->getUse() == Node::Use::RecycleBin) {
             return s_recycleBinNodeIcon;
         }
 
         return s_folderNodeIcon;
-    }
     }
 
     return QIcon();
@@ -610,8 +626,9 @@ void NotebookNodeExplorer::setCurrentNode(Node *p_node)
 
     Q_ASSERT(getItemNodeData(item).getNode() == p_node);
 
-    for (auto &it : items) {
-        it->setExpanded(true);
+    // Do not expand the last item.
+    for (int i = 0; i < items.size() - 1; ++i) {
+        items[i]->setExpanded(true);
     }
 
     m_masterExplorer->setCurrentItem(item);
@@ -731,6 +748,11 @@ void NotebookNodeExplorer::createContextMenuOnNode(QMenu *p_menu, const Node *p_
         act = createAction(Action::RemoveFromConfig, p_menu);
         p_menu->addAction(act);
 
+        p_menu->addSeparator();
+
+        act = createAction(Action::Sort, p_menu);
+        p_menu->addAction(act);
+
         if (selectedSize == 1) {
             p_menu->addSeparator();
 
@@ -794,18 +816,12 @@ QAction *NotebookNodeExplorer::createAction(Action p_act, QObject *p_parent)
                     }
 
                     int ret = QDialog::Rejected;
-                    switch (node->getType()) {
-                    case Node::Type::File:
-                    {
+                    if (node->hasContent()) {
                         NotePropertiesDialog dialog(node, VNoteX::getInst().getMainWindow());
                         ret = dialog.exec();
-                        break;
-                    }
-
-                    case Node::Type::Folder:
+                    } else {
                         FolderPropertiesDialog dialog(node, VNoteX::getInst().getMainWindow());
                         ret = dialog.exec();
-                        break;
                     }
 
                     if (ret == QDialog::Accepted) {
@@ -822,7 +838,7 @@ QAction *NotebookNodeExplorer::createAction(Action p_act, QObject *p_parent)
                     auto node = getCurrentNode();
                     if (node) {
                         locationPath = node->fetchAbsolutePath();
-                        if (node->getType() == Node::Type::File) {
+                        if (!node->isContainer()) {
                             locationPath = PathUtils::parentDirPath(locationPath);
                         }
                     } else if (m_notebook) {
@@ -908,6 +924,7 @@ QAction *NotebookNodeExplorer::createAction(Action p_act, QObject *p_parent)
         break;
 
     case Action::DeleteFromRecycleBin:
+        // It is fine to have &D with Action::Delete since they won't be at the same context.
         act = new QAction(tr("&Delete From Recycle Bin"), p_parent);
         connect(act, &QAction::triggered,
                 this, [this]() {
@@ -920,6 +937,14 @@ QAction *NotebookNodeExplorer::createAction(Action p_act, QObject *p_parent)
         connect(act, &QAction::triggered,
                 this, [this]() {
                     removeSelectedNodesFromConfig();
+                });
+        break;
+
+    case Action::Sort:
+        act = new QAction(generateMenuActionIcon("sort.svg"), tr("&Sort"), p_parent);
+        connect(act, &QAction::triggered,
+                this, [this]() {
+                    manualSort();
                 });
         break;
     }
@@ -940,7 +965,7 @@ void NotebookNodeExplorer::copySelectedNodes(bool p_move)
                         p_move ? ClipboardData::MoveNode : ClipboardData::CopyNode);
     for (auto node : nodes) {
         auto item = QSharedPointer<NodeClipboardDataItem>::create(node->getNotebook()->getId(),
-                                                                  node->fetchRelativePath());
+                                                                  node->fetchPath());
         cdata.addItem(item);
     }
 
@@ -1012,7 +1037,7 @@ static QSharedPointer<Node> getNodeFromClipboardDataItem(const NodeClipboardData
     }
 
     auto node = notebook->loadNodeByPath(p_item->m_nodeRelativePath);
-    Q_ASSERT(!node || node->fetchRelativePath() == p_item->m_nodeRelativePath);
+    Q_ASSERT(!node || node->fetchPath() == p_item->m_nodeRelativePath);
     return node;
 }
 
@@ -1024,12 +1049,12 @@ void NotebookNodeExplorer::pasteNodesFromClipboard()
         destNode = m_notebook->getRootNode().data();
     } else {
         // Current node may be a file node.
-        if (destNode->getType() == Node::Type::File) {
+        if (!destNode->isContainer()) {
             destNode = destNode->getParent();
         }
     }
 
-    Q_ASSERT(destNode && destNode->getType() == Node::Type::Folder);
+    Q_ASSERT(destNode && destNode->isContainer());
 
     // Fetch source nodes from clipboard.
     auto cdata = tryFetchClipboardData();
@@ -1228,7 +1253,7 @@ void NotebookNodeExplorer::removeNodes(QVector<Node *> p_nodes,
         updateNode(node);
     }
 
-    if (!p_configOnly && !p_skipRecycleBin) {
+    if (!p_configOnly && !p_skipRecycleBin && m_recycleBinNodeVisible) {
         updateNode(m_notebook->getRecycleBinNode().data());
     }
 
@@ -1316,13 +1341,160 @@ void NotebookNodeExplorer::reload()
 void NotebookNodeExplorer::focusNormalNode()
 {
     auto item = m_masterExplorer->currentItem();
-    if (item && item != m_masterExplorer->topLevelItem(0)) {
+    if (item && (!m_recycleBinNodeVisible || item != m_masterExplorer->topLevelItem(0))) {
         // Not recycle bin.
         return;
     }
 
-    auto cnt = m_masterExplorer->topLevelItemCount();
-    if (cnt > 1) {
-        m_masterExplorer->setCurrentItem(m_masterExplorer->topLevelItem(1));
+    m_masterExplorer->setCurrentItem(m_masterExplorer->topLevelItem(m_recycleBinNodeVisible ? 1 : 0));
+}
+
+void NotebookNodeExplorer::sortNodes(QVector<QSharedPointer<Node>> &p_nodes) const
+{
+    int viewOrder = ConfigMgr::getInst().getWidgetConfig().getNoteExplorerViewOrder();
+    if (viewOrder == ViewOrder::OrderedByConfiguration) {
+        return;
+    }
+
+    // Put containers first.
+    int firstFileIndex = p_nodes.size();
+    for (int i = 0; i < p_nodes.size(); ++i) {
+        if (p_nodes[i]->isContainer()) {
+            // If it is a container, load it to set its created time and modified time.
+            p_nodes[i]->load();
+        } else {
+            firstFileIndex = i;
+            break;
+        }
+    }
+
+    // Sort containers.
+    sortNodes(p_nodes, 0, firstFileIndex, viewOrder);
+
+    // Sort non-containers.
+    sortNodes(p_nodes, firstFileIndex, p_nodes.size(), viewOrder);
+}
+
+void NotebookNodeExplorer::sortNodes(QVector<QSharedPointer<Node>> &p_nodes, int p_start, int p_end, int p_viewOrder) const
+{
+    if (p_start >= p_end) {
+        return;
+    }
+
+    bool reversed = false;
+    switch (p_viewOrder) {
+    case ViewOrder::OrderedByNameReversed:
+        reversed = true;
+        Q_FALLTHROUGH();
+    case ViewOrder::OrderedByName:
+        std::sort(p_nodes.begin() + p_start, p_nodes.begin() + p_end, [reversed](const QSharedPointer<Node> &p_a, const QSharedPointer<Node> p_b) {
+            if (reversed) {
+                return p_b->getName() < p_a->getName();
+            } else {
+                return p_a->getName() < p_b->getName();
+            }
+        });
+        break;
+
+    case ViewOrder::OrderedByCreatedTimeReversed:
+        reversed = true;
+        Q_FALLTHROUGH();
+    case ViewOrder::OrderedByCreatedTime:
+        std::sort(p_nodes.begin() + p_start, p_nodes.begin() + p_end, [reversed](const QSharedPointer<Node> &p_a, const QSharedPointer<Node> p_b) {
+            if (reversed) {
+                return p_b->getCreatedTimeUtc() < p_a->getCreatedTimeUtc();
+            } else {
+                return p_a->getCreatedTimeUtc() < p_b->getCreatedTimeUtc();
+            }
+        });
+        break;
+
+    case ViewOrder::OrderedByModifiedTimeReversed:
+        reversed = true;
+        Q_FALLTHROUGH();
+    case ViewOrder::OrderedByModifiedTime:
+        std::sort(p_nodes.begin() + p_start, p_nodes.begin() + p_end, [reversed](const QSharedPointer<Node> &p_a, const QSharedPointer<Node> p_b) {
+            if (reversed) {
+                return p_b->getModifiedTimeUtc() < p_a->getModifiedTimeUtc();
+            } else {
+                return p_a->getModifiedTimeUtc() < p_b->getModifiedTimeUtc();
+            }
+        });
+        break;
+
+    default:
+        break;
+    }
+}
+
+void NotebookNodeExplorer::setRecycleBinNodeVisible(bool p_visible)
+{
+    if (m_recycleBinNodeVisible == p_visible) {
+        return;
+    }
+
+    m_recycleBinNodeVisible = p_visible;
+    reload();
+}
+
+void NotebookNodeExplorer::manualSort()
+{
+    auto node = getCurrentNode();
+    if (!node) {
+        return;
+    }
+
+    auto parentNode = node->getParent();
+    bool isNotebook = parentNode->isRoot();
+
+    // Check whether sort files or folders based on current node type.
+    bool sortFolders = node->isContainer();
+
+    SortDialog sortDlg(sortFolders ? tr("Sort Folders") : tr("Sort Notes"),
+                       tr("Sort nodes under %1 (%2) in the configuration file.").arg(
+                           isNotebook ? tr("notebook") : tr("folder"),
+                           isNotebook ? m_notebook->getName() : parentNode->getName()),
+                       VNoteX::getInst().getMainWindow());
+
+    QVector<int> selectedIdx;
+
+    // Update the tree.
+    {
+        auto treeWidget = sortDlg.getTreeWidget();
+        treeWidget->clear();
+        treeWidget->setColumnCount(2);
+        treeWidget->setHeaderLabels({tr("Name"), tr("Created Time"), tr("Modified Time")});
+
+        const auto &children = parentNode->getChildren();
+        for (int i = 0; i < children.size(); ++i) {
+            const auto &child = children[i];
+            if (m_notebook->isRecycleBinNode(child.data())) {
+                continue;
+            }
+
+            bool selected = sortFolders ? child->isContainer() : !child->isContainer();
+            if (selected) {
+                selectedIdx.push_back(i);
+
+                QStringList cols {child->getName(),
+                                  Utils::dateTimeString(child->getCreatedTimeUtc().toLocalTime()),
+                                  Utils::dateTimeString(child->getModifiedTimeUtc().toLocalTime())};
+                auto item = new QTreeWidgetItem(treeWidget, cols);
+                item->setData(0, Qt::UserRole, i);
+            }
+        }
+
+        sortDlg.updateTreeWidget();
+    }
+
+    if (sortDlg.exec() == QDialog::Accepted) {
+        const auto data = sortDlg.getSortedData();
+        Q_ASSERT(data.size() == selectedIdx.size());
+        QVector<int> sortedIdx(data.size(), -1);
+        for (int i = 0; i < data.size(); ++i) {
+            sortedIdx[i] = data[i].toInt();
+        }
+        parentNode->sortChildren(selectedIdx, sortedIdx);
+        updateNode(parentNode);
     }
 }

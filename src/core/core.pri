@@ -19,6 +19,8 @@ SOURCES += \
     $$PWD/configmgr.cpp \
     $$PWD/coreconfig.cpp \
     $$PWD/editorconfig.cpp \
+    $$PWD/externalfile.cpp \
+    $$PWD/file.cpp \
     $$PWD/htmltemplatehelper.cpp \
     $$PWD/logger.cpp \
     $$PWD/mainconfig.cpp \
@@ -35,7 +37,6 @@ SOURCES += \
     $$PWD/widgetconfig.cpp
 
 HEADERS += \
-    $$PWD/ViewerResource.h \
     $$PWD/buffermgr.h \
     $$PWD/shellexecution.h \
     $$PWD/task.h \
@@ -45,6 +46,8 @@ HEADERS += \
     $$PWD/coreconfig.h \
     $$PWD/editorconfig.h \
     $$PWD/events.h \
+    $$PWD/externalfile.h \
+    $$PWD/file.h \
     $$PWD/filelocator.h \
     $$PWD/fileopenparameters.h \
     $$PWD/htmltemplatehelper.h \
@@ -64,4 +67,5 @@ HEADERS += \
     $$PWD/theme.h \
     $$PWD/sessionconfig.h \
     $$PWD/clipboarddata.h \
+    $$PWD/webresource.h \
     $$PWD/widgetconfig.h

@@ -2,6 +2,9 @@
 
 #include <QVBoxLayout>
 #include <QFileDialog>
+#include <QToolButton>
+#include <QMenu>
+#include <QActionGroup>
 
 #include "titlebar.h"
 #include "dialogs/newnotebookdialog.h"
@@ -24,10 +27,12 @@
 #include "messageboxhelper.h"
 #include <core/configmgr.h>
 #include <core/coreconfig.h>
+#include <core/widgetconfig.h>
 #include <core/events.h>
 #include <core/exception.h>
 #include <core/fileopenparameters.h>
 #include "navigationmodemgr.h"
+#include "widgetsfactory.h"
 
 using namespace vnotex;
 
@@ -59,6 +64,7 @@ void NotebookExplorer::setupUI()
     mainLayout->addWidget(m_selector);
 
     m_nodeExplorer = new NotebookNodeExplorer(this);
+    m_nodeExplorer->setRecycleBinNodeVisible(ConfigMgr::getInst().getWidgetConfig().isNoteExplorerRecycleBinNodeShown());
     connect(m_nodeExplorer, &NotebookNodeExplorer::nodeActivated,
             &VNoteX::getInst(), &VNoteX::openNodeRequested);
     connect(m_nodeExplorer, &NotebookNodeExplorer::nodeAboutToMove,
@@ -76,6 +82,27 @@ TitleBar *NotebookExplorer::setupTitleBar(QWidget *p_parent)
                                  TitleBar::Action::Menu,
                                  p_parent);
     titleBar->setWhatsThis(tr("This title bar contains buttons and menu to manage notebooks and notes."));
+
+    {
+        auto viewMenu = WidgetsFactory::createMenu(titleBar);
+        titleBar->addActionButton(QStringLiteral("view.svg"), tr("View"), viewMenu);
+        connect(viewMenu, &QMenu::aboutToShow,
+                this, [this, viewMenu]() {
+                    setupViewMenu(viewMenu);
+                });
+    }
+
+    {
+        auto btn = titleBar->addActionButton(QStringLiteral("recycle_bin.svg"), tr("Toggle Recycle Bin Node"));
+        btn->defaultAction()->setCheckable(true);
+        btn->defaultAction()->setChecked(ConfigMgr::getInst().getWidgetConfig().isNoteExplorerRecycleBinNodeShown());
+        connect(btn, &QToolButton::triggered,
+                this, [this](QAction *p_act) {
+                    const bool checked = p_act->isChecked();
+                    ConfigMgr::getInst().getWidgetConfig().setNoteExplorerRecycleBinNodeShown(checked);
+                    m_nodeExplorer->setRecycleBinNodeVisible(checked);
+                });
+    }
 
     titleBar->addMenuAction(QStringLiteral("manage_notebooks.svg"),
                             tr("&Manage Notebooks"),
@@ -179,14 +206,16 @@ void NotebookExplorer::newNote()
 
 Node *NotebookExplorer::currentExploredFolderNode() const
 {
-    Q_ASSERT(m_currentNotebook);
+    if (!m_currentNotebook) {
+        return nullptr;
+    }
 
     auto node = m_nodeExplorer->getCurrentNode();
     if (node) {
-        if (node->getType() == Node::Type::File) {
+        if (!node->isContainer()) {
             node = node->getParent();
         }
-        Q_ASSERT(node && node->getType() == Node::Type::Folder);
+        Q_ASSERT(node && node->isContainer());
     } else {
         node = m_currentNotebook->getRootNode().data();
     }
@@ -241,7 +270,7 @@ void NotebookExplorer::importFile()
     QString errMsg;
     for (const auto &file : files) {
         try {
-            m_currentNotebook->copyAsNode(node, Node::Type::File, file);
+            m_currentNotebook->copyAsNode(node, Node::Flag::Content, file);
         } catch (Exception &p_e) {
             errMsg += tr("Failed to add file (%1) as node (%2).\n").arg(file, p_e.what());
         }
@@ -294,4 +323,67 @@ void NotebookExplorer::locateNode(Node *p_node)
     m_nodeExplorer->setFocus();
 }
 
+const QSharedPointer<Notebook> &NotebookExplorer::currentNotebook() const
+{
+    return m_currentNotebook;
+}
 
+void NotebookExplorer::setupViewMenu(QMenu *p_menu)
+{
+    if (!p_menu->isEmpty()) {
+        return;
+    }
+
+    auto ag = new QActionGroup(p_menu);
+
+    auto act = ag->addAction(tr("View By Configuration"));
+    act->setCheckable(true);
+    act->setChecked(true);
+    act->setData(NotebookNodeExplorer::ViewOrder::OrderedByConfiguration);
+    p_menu->addAction(act);
+
+    act = ag->addAction(tr("View By Name"));
+    act->setCheckable(true);
+    act->setData(NotebookNodeExplorer::ViewOrder::OrderedByName);
+    p_menu->addAction(act);
+
+    act = ag->addAction(tr("View By Name (Reversed)"));
+    act->setCheckable(true);
+    act->setData(NotebookNodeExplorer::ViewOrder::OrderedByNameReversed);
+    p_menu->addAction(act);
+
+    act = ag->addAction(tr("View By Created Time"));
+    act->setCheckable(true);
+    act->setData(NotebookNodeExplorer::ViewOrder::OrderedByCreatedTime);
+    p_menu->addAction(act);
+
+    act = ag->addAction(tr("View By Created Time (Reversed)"));
+    act->setCheckable(true);
+    act->setData(NotebookNodeExplorer::ViewOrder::OrderedByCreatedTimeReversed);
+    p_menu->addAction(act);
+
+    act = ag->addAction(tr("View By Modified Time"));
+    act->setCheckable(true);
+    act->setData(NotebookNodeExplorer::ViewOrder::OrderedByModifiedTime);
+    p_menu->addAction(act);
+
+    act = ag->addAction(tr("View By Modified Time (Reversed)"));
+    act->setCheckable(true);
+    act->setData(NotebookNodeExplorer::ViewOrder::OrderedByModifiedTimeReversed);
+    p_menu->addAction(act);
+
+    int viewOrder = ConfigMgr::getInst().getWidgetConfig().getNoteExplorerViewOrder();
+    for (const auto &act : ag->actions()) {
+        if (act->data().toInt() == viewOrder) {
+            act->setChecked(true);
+        }
+    }
+
+    connect(ag, &QActionGroup::triggered,
+            this, [this](QAction *p_action) {
+                int order = p_action->data().toInt();
+                ConfigMgr::getInst().getWidgetConfig().setNoteExplorerViewOrder(order);
+
+                m_nodeExplorer->reload();
+            });
+}

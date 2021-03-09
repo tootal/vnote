@@ -76,6 +76,18 @@ namespace vnotex
             bool m_loaded = false;
         };
 
+        enum ViewOrder
+        {
+            OrderedByConfiguration = 0,
+            OrderedByName,
+            OrderedByNameReversed,
+            OrderedByCreatedTime,
+            OrderedByCreatedTimeReversed,
+            OrderedByModifiedTime,
+            OrderedByModifiedTimeReversed,
+            ViewOrderMax
+        };
+
         explicit NotebookNodeExplorer(QWidget *p_parent = nullptr);
 
         void setNotebook(const QSharedPointer<Notebook> &p_notebook);
@@ -89,6 +101,8 @@ namespace vnotex
         void setCurrentNode(Node *p_node);
 
         void reload();
+
+        void setRecycleBinNodeVisible(bool p_visible);
 
     signals:
         void nodeActivated(Node *p_node, const QSharedPointer<FileOpenParameters> &p_paras);
@@ -104,9 +118,22 @@ namespace vnotex
     private:
         enum Column { Name = 0 };
 
-        enum Action { NewNote, NewFolder, Properties, OpenLocation, CopyPath,
-                      Copy, Cut, Paste, EmptyRecycleBin, Delete,
-                      DeleteFromRecycleBin, RemoveFromConfig };
+        enum class Action
+        {
+            NewNote,
+            NewFolder,
+            Properties,
+            OpenLocation,
+            CopyPath,
+            Copy,
+            Cut,
+            Paste,
+            EmptyRecycleBin,
+            Delete,
+            DeleteFromRecycleBin,
+            RemoveFromConfig,
+            Sort
+        };
 
         void setupUI();
 
@@ -191,6 +218,14 @@ namespace vnotex
         // Skip the recycle bin node if possible.
         void focusNormalNode();
 
+        void sortNodes(QVector<QSharedPointer<Node>> &p_nodes) const;
+
+        // [p_start, p_end).
+        void sortNodes(QVector<QSharedPointer<Node>> &p_nodes, int p_start, int p_end, int p_viewOrder) const;
+
+        // Sort nodes in config file.
+        void manualSort();
+
         static NotebookNodeExplorer::NodeData getItemNodeData(const QTreeWidgetItem *p_item);
 
         static void setItemNodeData(QTreeWidgetItem *p_item, const NodeData &p_data);
@@ -204,6 +239,8 @@ namespace vnotex
         QHash<const Notebook *, QSharedPointer<QTreeWidgetStateCache<Node *>>> m_stateCache;
 
         QScopedPointer<NavigationModeWrapper<QTreeWidget, QTreeWidgetItem>> m_navigationWrapper;
+
+        bool m_recycleBinNodeVisible = false;
 
         static QIcon s_folderNodeIcon;
         static QIcon s_fileNodeIcon;

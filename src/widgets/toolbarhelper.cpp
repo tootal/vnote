@@ -42,6 +42,8 @@ QToolBar *ToolBarHelper::setupFileToolBar(MainWindow *p_win, QToolBar *p_toolBar
         tb = createToolBar(p_win, MainWindow::tr("File"), "FileToolBar");
     }
 
+    const auto &coreConfig = ConfigMgr::getInst().getCoreConfig();
+
     // Notebook.
     {
         auto act = tb->addAction(generateIcon("notebook_menu.svg"), MainWindow::tr("Notebook"));
@@ -90,8 +92,6 @@ QToolBar *ToolBarHelper::setupFileToolBar(MainWindow *p_win, QToolBar *p_toolBar
 
     // New Note.
     {
-        const auto &coreConfig = ConfigMgr::getInst().getCoreConfig();
-
         auto newBtn = WidgetsFactory::createToolButton(tb);
         newBtn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 
@@ -169,6 +169,16 @@ QToolBar *ToolBarHelper::setupFileToolBar(MainWindow *p_win, QToolBar *p_toolBar
                            []() {
                                emit VNoteX::getInst().importFolderRequested();
                            });
+
+        newMenu->addSeparator();
+
+        auto exportAct = newMenu->addAction(MainWindow::tr("Export"),
+                                            newMenu,
+                                            []() {
+                                                emit VNoteX::getInst().exportRequested();
+                                            });
+        WidgetUtils::addActionShortcut(exportAct,
+                                       coreConfig.getShortcut(CoreConfig::Shortcut::Export));
     }
     
     // Tasks.

@@ -75,6 +75,8 @@ namespace vnotex
 
         void updateTabBarStyle();
 
+        void exportNotes();
+
     private:
         // Index in m_docks.
         enum DockIndex

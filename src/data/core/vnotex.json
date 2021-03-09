@@ -3,7 +3,7 @@
     "metadata" : {
         "//comment": "When releasing new version, please go through the following configs to check if override is needed.",
         "//Comment": "markdown_editor#override_viewer_resource",
-        "version" : "3.0.0-beta.6"
+        "version" : "3.0.0-beta.8"
     },
     "core" : {
         "theme" : "pure",
@@ -24,7 +24,8 @@
             "MaximizeSplit" : "Ctrl+G, Shift+\\",
             "DistributeSplits" : "Ctrl+G, =",
             "RemoveSplitAndWorkspace" : "Ctrl+G, R",
-            "NewWorkspace" : "Ctrl+G, N"
+            "NewWorkspace" : "Ctrl+G, N",
+            "Export" : "Ctrl+G, T"
         },
         "toolbar_icon_size" : 16
     },
@@ -83,7 +84,7 @@
         "markdown_editor" : {
             "override_viewer_resource" : true,
             "viewer_resource" : {
-                "template" : "web/markdownviewertemplate.html",
+                "template" : "web/markdown-viewer-template.html",
                 "resources" : [
                     {
                         "name" : "global_styles",
@@ -217,6 +218,28 @@
                     }
                 ]
             },
+            "export_resource" : {
+                "template" : "web/markdown-export-template.html",
+                "resources" : [
+                    {
+                        "name" : "global_styles",
+                        "enabled" : true,
+                        "styles" : [
+                            "web/css/exportglobalstyles.css"
+                        ]
+                    },
+                    {
+                        "name" : "outline",
+                        "enabled" : true,
+                        "styles" : [
+                            "web/css/outline.css"
+                        ],
+                        "scripts" : [
+                            "web/js/outline.js"
+                        ]
+                    }
+                ]
+            },
             "//comment" : "Whether use javascript or external program to render PlantUML",
             "web_plantuml" : true,
             "//comment" : "Whether use javascript or external program to render Graphviz",
@@ -262,6 +285,9 @@
         "//comment" : "Level of the heading in outline that should expand to automatically (1-6)",
         "outline_auto_expanded_level" : 6,
         "//comment" : "Default find options in FindAndReplace",
-        "find_and_replace_options" : 16
+        "find_and_replace_options" : 16,
+        "//comment" : "View order of the note explorer",
+        "note_explorer_view_order" : 0,
+        "note_explorer_recycle_bin_node_shown" : false
     }
 }
