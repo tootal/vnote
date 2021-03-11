@@ -118,9 +118,12 @@ void LocalNotebookBackend::copyFile(const QString &p_filePath, const QString &p_
         filePath = getFullPath(filePath);
     }
 
-    Q_ASSERT(QFileInfo(filePath).isFile());
-
-    FileUtils::copyFile(filePath, getFullPath(p_destPath));
+    if (QFileInfo(filePath).isFile()) {
+        FileUtils::copyFile(filePath, getFullPath(p_destPath));
+    } else {
+        Exception::throwOne(Exception::Type::FailToRemoveFile,
+                            QString("failed to remove file: %1").arg(filePath));
+    }
 }
 
 void LocalNotebookBackend::copyDir(const QString &p_dirPath, const QString &p_destPath)
