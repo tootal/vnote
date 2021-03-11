@@ -263,7 +263,14 @@ void NotebookNodeExplorer::setupMasterExplorer(QWidget *p_parent)
                 }
 
                 if (data.isNode()) {
-                    emit nodeActivated(data.getNode(), QSharedPointer<FileOpenParameters>::create());
+                    try {
+                        emit nodeActivated(data.getNode(), QSharedPointer<FileOpenParameters>::create());
+                    } catch (Exception &p_e) {
+                        QString msg = tr("Failed to load nodes (%1).")
+                                        .arg(p_e.what());
+                        qCritical() << msg;
+                        MessageBoxHelper::notify(MessageBoxHelper::Critical, msg, VNoteX::getInst().getMainWindow());
+                    }
                 } else if (data.isAttachment()) {
                     // TODO.
                 }
