@@ -7,6 +7,7 @@
 #include <widgets/treewidget.h>
 #include <core/vnotex.h>
 #include <core/taskmgr.h>
+#include <core/configmgr.h>
 #include <core/task.h>
 #include <utils/widgetutils.h>
 
@@ -40,10 +41,11 @@ void TaskPage::setupUI()
     connect(openLocationBtn, &QPushButton::clicked,
             this, [this]() {
         auto task = currentTask();
+        QString path = ConfigMgr::getInst().getUserTaskFolder();
         if (task) {
-            auto path = QFileInfo(task->getFile()).absolutePath();
-            WidgetUtils::openUrlByDesktop(QUrl::fromLocalFile(path));
+            path = QFileInfo(task->getFile()).absolutePath();
         }
+        WidgetUtils::openUrlByDesktop(QUrl::fromLocalFile(path));
     });
     
     auto addBtn = new QPushButton(tr("Add"), this);
