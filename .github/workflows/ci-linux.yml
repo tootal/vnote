@@ -29,7 +29,6 @@ jobs:
           auth_header="$(git config --local --get http.https://github.com/.extraheader)"
           git submodule sync --recursive
           git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
-
       - name: Install linuxdeploy
         uses: miurahr/install-linuxdeploy-action@v1
         with:
@@ -39,7 +38,6 @@ jobs:
         run: |
           sudo DEBIAN_FRONTEND=noninteractive apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libfcitx-qt5-dev tree
-
       - name: Install Qt
         uses: jurplel/install-qt-action@v2
         with:
@@ -130,3 +128,11 @@ jobs:
         run: |
           git tag --force continuous-build ${GITHUB_SHA}
           git push --force --tags
+      - name: Update Continuous Build Release
+        if: github.ref == 'refs/heads/master'
+        uses: johnwbyrd/update-release@v1.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: ${{runner.workspace}}/build/vnote-linux-x64.AppImage
+          release: Continuous Build
+          tag: continuous-build
