@@ -41,9 +41,28 @@ void TaskMgr::refresh()
     loadAvailableTasks();
 }
 
-const QVector<Task*> &TaskMgr::getAllTasks() const
+QVector<Task*> TaskMgr::getAllTasks() const
 {
-    return m_tasks;
+    QVector<Task*> tasks;
+    tasks.append(m_appTasks);
+    tasks.append(m_userTasks);
+    tasks.append(m_notebookTasks);
+    return tasks;
+}
+
+const QVector<Task *> &TaskMgr::getAppTasks() const
+{
+    return m_appTasks;
+}
+
+const QVector<Task *> &TaskMgr::getUserTasks() const
+{
+    return m_userTasks;
+}
+
+const QVector<Task *> &TaskMgr::getNotebookTasks() const
+{
+    return m_notebookTasks;
 }
 
 void TaskMgr::addSearchPath(const QString &p_path)
@@ -91,6 +110,14 @@ void TaskMgr::clearWatchPaths()
     }
 }
 
+void TaskMgr::clearTasks()
+{
+    m_appTasks.clear();
+    m_userTasks.clear();
+    m_notebookTasks.clear();
+    m_files.clear();
+}
+
 void TaskMgr::addAllTaskFolder()
 {
     s_searchPaths.clear();
@@ -124,47 +151,42 @@ void TaskMgr::watchTaskEntrys()
 
 void TaskMgr::loadAvailableTasks()
 {
-    m_tasks.clear();
     m_files.clear();
-    
-    for (const auto &pa : s_searchPaths) {
-        loadTasks(pa);
-    }
-    
-    {
-        QStringList list;
-        for (auto task : m_tasks) {
-            list << QFileInfo(task->getFile()).fileName();
-        }
-        if (!m_tasks.isEmpty()) qDebug() << "load tasks" << list;
-    }
+    auto &configMgr = ConfigMgr::getInst();
+    loadAvailableTasks(m_appTasks, configMgr.getAppTaskFolder());
+    loadAvailableTasks(m_userTasks, configMgr.getUserTaskFolder());
+    loadAvailableTasks(m_notebookTasks, getNotebookTaskFolder());
 }
 
-void TaskMgr::loadTasks(const QString &p_path)
+void TaskMgr::loadAvailableTasks(QVector<Task *> &p_tasks, const QString &p_searchPath)
 {
-    const auto taskFiles = FileUtils::entryListRecursively(p_path, {"*.json"}, QDir::Files);
+    p_tasks.clear();
+    if (p_searchPath.isEmpty()) return ;
+    const auto taskFiles = FileUtils::entryListRecursively(p_searchPath, {"*.json"}, QDir::Files);
     for (auto &file : taskFiles) {
         m_files << file;
-        checkAndAddTaskFile(file);
+        checkAndAddTaskFile(p_tasks, file);
+    }
+
+    {
+        QStringList list;
+        for (auto task : p_tasks) {
+            list << QFileInfo(task->getFile()).fileName();
+        }
+        if (!p_tasks.isEmpty()) qDebug() << "load tasks" << list;
     }
 }
 
-void TaskMgr::checkAndAddTaskFile(const QString &p_file)
+void TaskMgr::checkAndAddTaskFile(QVector<Task *> &p_tasks, const QString &p_file)
 {
     QJsonDocument json;
     if (Task::isValidTaskFile(p_file, json)) {
         const auto localeStr = ConfigMgr::getInst().getCoreConfig().getLocaleToUse();
-        m_tasks.push_back(Task::fromFile(p_file, json, localeStr, this));
+        p_tasks.push_back(Task::fromFile(p_file, json, localeStr, this));
     }
 }
 
 void TaskMgr::deleteTask(Task *p_task)
 {
-    FileUtils::removeFile(p_task->getFile());
-    for (int i = 0; i < m_tasks.size(); i++) {
-        if (m_tasks.at(i) == p_task) {
-            m_tasks.remove(i);
-            break;
-        }
-    }
+
 }

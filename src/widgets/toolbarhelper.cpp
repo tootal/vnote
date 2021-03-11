@@ -204,7 +204,15 @@ void ToolBarHelper::setupTaskMenu(QMenu *p_menu)
 {
     p_menu->clear();
     const auto &taskMgr = VNoteX::getInst().getTaskMgr();
-    for (auto task : taskMgr.getAllTasks()) {
+    for (auto task : taskMgr.getAppTasks()) {
+        addTaskMenu(p_menu, task);
+    }
+    p_menu->addSeparator();
+    for (auto task : taskMgr.getUserTasks()) {
+        addTaskMenu(p_menu, task);
+    }
+    p_menu->addSeparator();
+    for (auto task : taskMgr.getNotebookTasks()) {
         addTaskMenu(p_menu, task);
     }
 }

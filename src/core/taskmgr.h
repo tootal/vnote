@@ -23,7 +23,13 @@ namespace vnotex
         
         void refresh();
         
-        const QVector<Task*> &getAllTasks() const;
+        QVector<Task*> getAllTasks() const;
+
+        const QVector<Task*> &getAppTasks() const;
+
+        const QVector<Task*> &getUserTasks() const;
+
+        const QVector<Task*> &getNotebookTasks() const;
         
         void deleteTask(Task *p_task);
         
@@ -38,20 +44,26 @@ namespace vnotex
         void addWatchPaths(const QStringList &list);
         
         void clearWatchPaths();
-        
+
+        void clearTasks();
+
         void addAllTaskFolder();
         
         void loadAllTask();
         
         void watchTaskEntrys();
-        
+
         void loadAvailableTasks();
+        
+        void loadAvailableTasks(QVector<Task*> &p_tasks, const QString &p_searchPath);
         
         void loadTasks(const QString &p_path);
         
-        void checkAndAddTaskFile(const QString &p_file);
-        
-        QVector<Task*> m_tasks;
+        void checkAndAddTaskFile(QVector<Task*> &p_tasks, const QString &p_file);
+
+        QVector<Task*> m_appTasks;
+        QVector<Task*> m_userTasks;
+        QVector<Task*> m_notebookTasks;
         
         // all json files in task folder
         // maybe invalid
