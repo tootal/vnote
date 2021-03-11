@@ -8,3 +8,8 @@ QT += testlib
 CONFIG += c++14 testcase
 
 CONFIG += no_testcase_installs
+
+unix:!mac:exists(/usr/bin/ld.gold) {
+    CONFIG += use_gold_linker
+}
+
