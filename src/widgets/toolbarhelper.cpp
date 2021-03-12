@@ -224,6 +224,7 @@ void ToolBarHelper::addTaskMenu(QMenu *p_menu, Task *p_task)
     QAction *action = nullptr;
     const auto &tasks = p_task->getTasks();
     auto label = p_task->getLabel();
+    label = label.replace("&", "&&");
     QIcon icon;
     try {
         icon = generateIcon(p_task->getIcon());

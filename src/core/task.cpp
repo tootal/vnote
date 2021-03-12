@@ -38,14 +38,14 @@ Task* Task::fromJson(Task *p_task,
                      const QJsonObject &p_obj)
 {
     if (p_obj.contains("version")) {
-        p_task->m_version = p_obj["version"].toString();
+        p_task->dto.version = p_obj["version"].toString();
     }
     
     auto version = QVersionNumber::fromString(p_task->getVersion());
     if (version < QVersionNumber(1, 0, 0)) {
         return fromJsonV0(p_task, p_obj);
     }
-    qWarning() << "Unknow Task Version" << version << p_task->m_file;
+    qWarning() << "Unknow Task Version" << version << p_task->dto._source;
     return p_task;
 }
 
@@ -54,60 +54,60 @@ Task *Task::fromJsonV0(Task *p_task,
                        bool mergeTasks)
 {
     if (p_obj.contains("type")) {
-        p_task->m_type = p_obj["type"].toString();
+        p_task->dto.type = p_obj["type"].toString();
     }
     
     if (p_obj.contains("icon")) {
         QString path = p_obj["icon"].toString();
         QDir iconPath(path);
         if (iconPath.isRelative()) {
-            QDir taskDir(p_task->m_file);
+            QDir taskDir(p_task->dto._source);
             taskDir.cdUp();
             path = QDir(taskDir.filePath(path)).absolutePath();
         }
         if (QFile::exists(path)) {
-            p_task->m_icon = path;
+            p_task->dto.icon = path;
         } else {
             qWarning() << "task icon not exists" << path;
         }
     }
     
     if (p_obj.contains("shortcut")) {
-        p_task->m_shortcut = p_obj["shortcut"].toString();
+        p_task->dto.shortcut = p_obj["shortcut"].toString();
     }
     
     if (p_obj.contains("type")) {
-        p_task->m_type = p_obj["type"].toString();
+        p_task->dto.type = p_obj["type"].toString();
     }
     
     if (p_obj.contains("command")) {
-        p_task->m_command = getLocaleString(p_obj["command"], p_task->m_locale);
+        p_task->dto.command = getLocaleString(p_obj["command"], p_task->m_locale);
     }
     
     if (p_obj.contains("args")) {
-        p_task->m_args = getLocaleStringList(p_obj["args"], p_task->m_locale);
+        p_task->dto.args = getLocaleStringList(p_obj["args"], p_task->m_locale);
     }
     
     if (p_obj.contains("label")) {
-        p_task->m_label = getLocaleString(p_obj["label"], p_task->m_locale);
-    } else if (p_task->m_label.isNull() && !p_task->m_command.isNull()) {
-        p_task->m_label = p_task->m_command;
+        p_task->dto.label = getLocaleString(p_obj["label"], p_task->m_locale);
+    } else if (p_task->dto.label.isNull() && !p_task->dto.command.isNull()) {
+        p_task->dto.label = p_task->dto.command;
     }
     
     if (p_obj.contains("options")) {
         auto options = p_obj["options"].toObject();
         
         if (options.contains("cwd")) {
-            p_task->m_options_cwd = options["cwd"].toString();
+            p_task->dto.options.cwd = options["cwd"].toString();
         }
         
         if (options.contains("env")) {
-            p_task->m_options_env.clear();
+            p_task->dto.options.env.clear();
             auto env = options["env"].toObject();
             for (auto i = env.begin(); i != env.end(); i++) {
                 auto key = i.key();
                 auto value = getLocaleString(i.value(), p_task->m_locale);
-                p_task->m_options_env.insert(key, value);
+                p_task->dto.options.env.insert(key, value);
             }
         }
         
@@ -115,14 +115,14 @@ Task *Task::fromJsonV0(Task *p_task,
             auto shell = options["shell"].toObject();
             
             if (shell.contains("executable")) {
-                p_task->m_options_shell_executable = shell["executable"].toString();
+                p_task->dto.options.shell.executable = shell["executable"].toString();
             }
             
             if (shell.contains("args")) {
-                p_task->m_options_shell_args.clear();
+                p_task->dto.options.shell.args.clear();
                 
                 for (auto arg : shell["args"].toArray()) {
-                    p_task->m_options_shell_args << arg.toString();
+                    p_task->dto.options.shell.args << arg.toString();
                 }
             }
         }
@@ -141,47 +141,47 @@ Task *Task::fromJsonV0(Task *p_task,
     }
     
     if (p_obj.contains("inputs")) {
-        p_task->m_inputs.clear();
+        p_task->dto.inputs.clear();
         auto inputs = p_obj["inputs"].toArray();
         
         for (const auto &input : inputs) {
             auto in = input.toObject();
-            Input i;
+            InputVarDTO i;
             if (in.contains("id")) {
-                i.m_id = in["id"].toString();
+                i.id = in["id"].toString();
             } else {
                 qWarning() << "Input configuration not contain id";
             }
             
             if (in.contains("type")) {
-                i.m_type = in["type"].toString();
+                i.type = in["type"].toString();
             } else {
-                i.m_type = "promptString";
+                i.type = "promptString";
             }
             
             if (in.contains("description")) {
-                i.m_description = getLocaleString(in["description"], p_task->m_locale);
+                i.description = getLocaleString(in["description"], p_task->m_locale);
             }
             
             if (in.contains("default")) {
-                i.m_default = getLocaleString(in["default"], p_task->m_locale);
+                i.default_ = getLocaleString(in["default"], p_task->m_locale);
             }
             
-            if (i.m_type == "promptString" && in.contains("password")) {
-                i.m_password = in["password"].toBool();
+            if (i.type == "promptString" && in.contains("password")) {
+                i.password = in["password"].toBool();
             } else {
-                i.m_password = false;
+                i.password = false;
             }
             
-            if (i.m_type == "pickString" && in.contains("options")) {
-                i.m_options = getLocaleStringList(in["options"], p_task->m_locale);
+            if (i.type == "pickString" && in.contains("options")) {
+                i.options = getLocaleStringList(in["options"], p_task->m_locale);
             }
             
-            if (i.m_type == "pickString" && !i.m_default.isNull() && !i.m_options.contains(i.m_default)) {
-                qWarning() << "default must be one of the option values";
+            if (i.type == "pickString" && !i.default_.isNull() && !i.options.contains(i.default_)) {
+                qWarning() << "preset must be one of the option values";
             }
             
-            p_task->m_inputs << i;
+            p_task->dto.inputs << i;
         }
     }
     
@@ -206,42 +206,42 @@ Task *Task::fromJsonV0(Task *p_task,
 
 QString Task::getVersion() const
 {
-    return m_version;
+    return dto.version;
 }
 
 QString Task::getType() const
 {
-    return m_type;
+    return dto.type;
 }
 
 QString Task::getCommand() const
 {
-    return s_vars.evaluate(m_command, this);
+    return s_vars.evaluate(dto.command, this);
 }
 
 QStringList Task::getArgs() const
 {
-    return s_vars.evaluate(m_args, this);
+    return s_vars.evaluate(dto.args, this);
 }
 
 QString Task::getLabel() const
 {
-    return m_label;
+    return dto.label;
 }
 
 QString Task::getIcon() const
 {
-    return m_icon;
+    return dto.icon;
 }
 
 QString Task::getShortcut() const
 {
-    return m_shortcut;
+    return dto.shortcut;
 }
 
 QString Task::getOptionsCwd() const
 {
-    auto cwd = m_options_cwd;
+    auto cwd = dto.options.cwd;
     if (!cwd.isNull()) {
         return s_vars.evaluate(cwd, this);
     }
@@ -254,25 +254,25 @@ QString Task::getOptionsCwd() const
     if (!cwd.isNull()) {
         return QFileInfo(cwd).dir().absolutePath();
     }
-    return QFileInfo(m_file).dir().absolutePath();
+    return QFileInfo(dto._source).dir().absolutePath();
 }
 
 const QMap<QString, QString> &Task::getOptionsEnv() const
 {
-    return m_options_env;
+    return dto.options.env;
 }
 
 QString Task::getOptionsShellExecutable() const
 {
-    return m_options_shell_executable;
+    return dto.options.shell.executable;
 }
 
 QStringList Task::getOptionsShellArgs() const
 {
-    if (m_options_shell_args.isEmpty()) {
-        return ShellExecution::defaultShellArguments(m_options_shell_executable);
+    if (dto.options.shell.args.isEmpty()) {
+        return ShellExecution::defaultShellArguments(dto.options.shell.executable);
     } else {
-        return s_vars.evaluate(m_options_shell_args, this);
+        return s_vars.evaluate(dto.options.shell.args, this);
     }
 }    
 
@@ -281,15 +281,15 @@ const QVector<Task *> &Task::getTasks() const
     return m_tasks;
 }
 
-const QVector<Task::Input> &Task::getInputs() const
+const QVector<InputVarDTO> &Task::getInputs() const
 {
-    return m_inputs;
+    return dto.inputs;
 }
 
-Task::Input Task::getInput(const QString &p_id) const
+InputVarDTO Task::getInput(const QString &p_id) const
 {
-    for (auto i : m_inputs) {
-        if (i.m_id == p_id) {
+    for (auto i : dto.inputs) {
+        if (i.id == p_id) {
             return i;
         }
     }
@@ -300,7 +300,7 @@ Task::Input Task::getInput(const QString &p_id) const
 
 QString Task::getFile() const
 {
-    return m_file;
+    return dto._source;
 }
 
 Task::Task(const QString &p_locale, 
@@ -308,26 +308,25 @@ Task::Task(const QString &p_locale,
            QObject *p_parent)
     : QObject(p_parent)
 {   
-    m_file = p_file;
-    m_version = s_latestVersion;
-    m_type = "shell";
-    m_options_shell_executable = ShellExecution::defaultShell();
-
+    dto._source = p_file;
+    dto.version = s_latestVersion;
+    dto.type = "shell";
+    dto.options.shell.executable = ShellExecution::defaultShell();
     
     // inherit configuration
     m_parent = qobject_cast<Task*>(p_parent);
     if (m_parent) {
-        m_version = m_parent->m_version;
-        m_type = m_parent->m_type;
-        m_command = m_parent->m_command;
-        m_args = m_parent->m_args;
-        m_options_cwd = m_parent->m_options_cwd;
-        m_options_env = m_parent->m_options_env;
-        m_options_shell_executable = m_parent->m_options_shell_executable;
-        m_options_shell_args = m_parent->m_options_shell_args;
+        dto.version = m_parent->dto.version;
+        dto.type = m_parent->dto.type;
+        dto.command = m_parent->dto.command;
+        dto.args = m_parent->dto.args;
+        dto.options.cwd = m_parent->dto.options.cwd;
+        dto.options.env = m_parent->dto.options.env;
+        dto.options.shell.executable = m_parent->dto.options.shell.executable;
+        dto.options.shell.args = m_parent->dto.options.shell.args;
         // not inherit label/inputs/tasks
     } else {
-        m_label = QFileInfo(p_file).baseName();
+        dto.label = QFileInfo(p_file).baseName();
     }
     
     if (!p_locale.isNull()) {

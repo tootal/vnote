@@ -277,12 +277,12 @@ QString TaskVariableMgr::evaluateInputVariables(const QString &p_text,
         auto input = p_task->getInput(id);
         QString text;
         auto mainwin = VNoteX::getInst().getMainWindow();
-        if (input.m_type == "promptString") {
-            auto desc = evaluate(input.m_description, p_task);
-            auto defaultText = evaluate(input.m_default, p_task);
+        if (input.type == "promptString") {
+            auto desc = evaluate(input.description, p_task);
+            auto defaultText = evaluate(input.default_, p_task);
             QInputDialog dialog(mainwin);
             dialog.setInputMode(QInputDialog::TextInput);
-            if (input.m_password) dialog.setTextEchoMode(QLineEdit::Password);
+            if (input.password) dialog.setTextEchoMode(QLineEdit::Password);
             else dialog.setTextEchoMode(QLineEdit::Normal);
             dialog.setWindowTitle(p_task->getLabel());
             dialog.setLabelText(desc);
@@ -292,21 +292,21 @@ QString TaskVariableMgr::evaluateInputVariables(const QString &p_text,
             } else {
                 throw "TaskCancle";
             }
-        } else if (input.m_type == "pickString") {
+        } else if (input.type == "pickString") {
             // TODO: select description
-            SelectDialog dialog(p_task->getLabel(), input.m_description, mainwin);
-            for (int i = 0; i < input.m_options.size(); i++) {
-                dialog.addSelection(input.m_options.at(i), i);
+            SelectDialog dialog(p_task->getLabel(), input.description, mainwin);
+            for (int i = 0; i < input.options.size(); i++) {
+                dialog.addSelection(input.options.at(i), i);
             }
     
             if (dialog.exec() == QDialog::Accepted) {
                 int selection = dialog.getSelection();
-                text = input.m_options.at(selection);
+                text = input.options.at(selection);
             } else {
                 throw "TaskCancle";
             }
         }
-        map.insert(input.m_id, text);
+        map.insert(input.id, text);
     }
     return TaskHelper::replaceAllSepcialVariables("input", p_text, map);
 }

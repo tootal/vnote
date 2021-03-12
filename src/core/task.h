@@ -13,21 +13,65 @@ class QAction;
 
 namespace vnotex {
 
+    struct InputVarDTO {
+        QString id;
+
+        QString type;
+
+        QString description;
+
+        QString default_;
+
+        bool password;
+
+        QStringList options;
+    };
+
+    struct ShellOptionsDTO {
+        QString executable;
+
+        QStringList args;
+    };
+
+    struct TaskOptionsDTO {
+        QString cwd;
+
+        QMap<QString, QString> env;
+
+        ShellOptionsDTO shell;
+    };
+
+    struct TaskDTO {
+        QString version;
+
+        QString type;
+
+        QString command;
+
+        QStringList args;
+
+        QString label;
+
+        QString icon;
+
+        QString shortcut;
+
+        QVector<InputVarDTO> inputs;
+
+        TaskOptionsDTO options;
+
+        QString _scope;
+
+        QString _source;
+    };
+
     class Notebook;
     
     class Task : public QObject
     {
         Q_OBJECT
     public:
-        
-        struct Input {
-            QString m_id;
-            QString m_type;
-            QString m_description;
-            QString m_default;
-            bool m_password;
-            QStringList m_options;
-        };
+
         
         static Task* fromFile(const QString &p_file,
                               const QJsonDocument &p_json,
@@ -60,9 +104,9 @@ namespace vnotex {
         
         const QVector<Task*> &getTasks() const;
         
-        const QVector<Input> &getInputs() const;
+        const QVector<InputVarDTO> &getInputs() const;
         
-        Input getInput(const QString &p_id) const;
+        InputVarDTO getInput(const QString &p_id) const;
         
         QString getFile() const;
         
@@ -100,35 +144,11 @@ namespace vnotex {
         
         static QString textDecode(const QByteArray &p_text, const QByteArray &name);
         
-        QString m_version;
-        
-        QString m_type;
-        
-        QString m_command;
-        
-        QStringList m_args;
-        
-        QString m_label;
-        
-        QString m_icon;
-        
-        QString m_shortcut;
-        
-        QString m_options_cwd;
-        
-        QMap<QString, QString> m_options_env;
-        
-        QString m_options_shell_executable;
-        
-        QStringList m_options_shell_args;
-        
-        QVector<Task*> m_tasks;
-        
-        QVector<Input> m_inputs;
+        TaskDTO dto;
         
         Task *m_parent = nullptr;
-        
-        QString m_file;
+
+        QVector<Task*> m_tasks;
         
         QString m_locale;
         
