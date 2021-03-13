@@ -41,6 +41,7 @@ SOURCES += \
     $$PWD/dialogs/folderfilesfilterwidget.cpp \
     $$PWD/findandreplacewidget.cpp \
     $$PWD/fullscreentoggleaction.cpp \
+    $$PWD/inputdialog.cpp \
     $$PWD/lineedit.cpp \
     $$PWD/lineeditdelegate.cpp \
     $$PWD/listwidget.cpp \
@@ -129,6 +130,7 @@ HEADERS += \
     $$PWD/dialogs/folderfilesfilterwidget.h \
     $$PWD/findandreplacewidget.h \
     $$PWD/fullscreentoggleaction.h \
+    $$PWD/inputdialog.h \
     $$PWD/lineedit.h \
     $$PWD/lineeditdelegate.h \
     $$PWD/listwidget.h \

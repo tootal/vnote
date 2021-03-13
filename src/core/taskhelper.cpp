@@ -3,6 +3,8 @@
 #include <QRegularExpression>
 #include <QJsonArray>
 #include <QMessageBox>
+#include <QPushButton>
+#include <QInputDialog>
 
 #include "vnotex.h"
 #include "notebookmgr.h"
@@ -161,7 +163,38 @@ QString TaskHelper::handleCommand(const QString &p_text,
             }
             arg.insert(name, val);
         }
-        if (cmd == "show-info") {
+        if (cmd == "show-messagebox") {
+            QMessageBox box;
+            box.setText(value);
+            box.setWindowTitle(arg.value("title"));
+            QVector<QPushButton*> buttons;
+            // add buttons
+            {
+                auto btns = arg.value("buttons").split("|");
+                for (const auto &btn : btns) {
+                    QPushButton *button = box.addButton(btn, QMessageBox::ActionRole);
+                    buttons.append(button);
+                }
+            }
+            box.exec();
+            int clickedBtnId;
+            for (clickedBtnId = 0; clickedBtnId < buttons.size(); clickedBtnId++) {
+                if (box.clickedButton() == buttons.at(clickedBtnId)) {
+                    break;
+                }
+            }
+            if (p_process) {
+                if (p_process->state() == QProcess::Running) {
+                    p_process->write(QByteArray::number(clickedBtnId)+"\n");
+                }
+            } else {
+                qWarning() << "process finished!";
+            }
+        } else if (cmd == "show-inputdialog") {
+            QInputDialog dialog;
+            dialog.setWindowTitle(arg.value("title"));
+            
+        } else if (cmd == "show-info") {
             QMessageBox::information(VNoteX::getInst().getMainWindow(),
                                      arg.value("title"),
                                      value);

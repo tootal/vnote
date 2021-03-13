@@ -6,6 +6,7 @@
 
 class QTreeWidget;
 class QTreeWidgetItem;
+class QTableWidget;
 
 namespace vnotex
 {
@@ -26,6 +27,10 @@ namespace vnotex
         void setupUI();
         
         void setupTask(QTreeWidgetItem *p_item, Task *p_task);
+
+        void setupTaskViewer();
+
+        void loadTaskDetail(QTreeWidgetItem *p_item, int column);
         
         void loadTasks();
         
@@ -35,6 +40,8 @@ namespace vnotex
         Task *currentTask() const;
         
         QTreeWidget *m_taskExplorer = nullptr;
+
+        QTableWidget *m_taskViewer = nullptr;
     };
 } // ns vnotex
 

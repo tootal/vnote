@@ -79,6 +79,8 @@ namespace vnotex {
                               QObject *p_parent = nullptr);
         
         void run() const;
+
+        TaskDTO getDTO() const;
         
         QString getVersion() const;
         

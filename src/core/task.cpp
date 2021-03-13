@@ -411,6 +411,11 @@ void Task::run() const
     }
 }
 
+TaskDTO Task::getDTO() const
+{
+    return dto;
+}
+
 QString Task::textDecode(const QByteArray &p_text)
 {
     static QByteArrayList codecNames = {
