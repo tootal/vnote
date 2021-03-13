@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "locale.json",
+    "title": "Locale String",
+    "oneOf": [
+        {
+            "type": "string"
+        },
+        {
+            "type": "object",
+            "properties": {
+                "en_US": {
+                    "type": "string"
+                },
+                "zh_CN": {
+                    "type": "string"
+                }
+            }
+        }
+    ]
+}

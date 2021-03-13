@@ -1,0 +1,25 @@
+{
+    "version": "0.1.5",
+    "label": "Sample",
+    "icon": "sample.svg",
+    "shortcut": "Alt+G, S",
+    "command": "echo",
+    "args": [
+        {
+            "en_US": "hello",
+            "zh_CN": "你好"
+        }
+    ],
+    "options": {
+        "cwd": "${taskDirname}",
+        "env": {
+            "key": "value"
+        },
+        "shell": {
+            "executable": "/bin/bash",
+            "args": [
+                "-c"
+            ]
+        }
+    }
+}

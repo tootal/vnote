@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "input.json",
+    "title": "VNote Task Inputs",
+    "description": "Configuration of input variables",
+    "type": "object",
+    "properties": {
+        "id": {
+            "description": "Input variable id.",
+            "type": "string"
+        },
+        "type": {
+            "description": "The type of input variable.",
+            "type": "string",
+            "enum": ["promptString", "pickString"]
+        },
+        "description": {
+            "description": "Provides context for the input.",
+            "$ref": "locale.json"
+        },
+        "default": {
+            "description": "Default value that will be used if the user doesn't enter something else.",
+            "$ref": "locale.json"
+        },
+        "password": {
+            "description": "Set to true to input with a password prompt that will not show the typed value.",
+            "type": "boolean"
+        },
+        "options": {
+            "description": "An array of options for the user to pick from.",
+            "type": "array",
+            "items": {
+                "$ref": "locale.json"
+            }
+        }
+    },
+    "required": ["id"]
+}

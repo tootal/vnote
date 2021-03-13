@@ -1,0 +1,39 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "options.json",
+    "title": "VNote Task Command Options",
+    "description": "The command options used when the command is executed.",
+    "type": "object",
+    "properties": {
+        "cwd": {
+            "description": "The current working directory of the executed program or shell.",
+            "type": "string"
+        },
+        "env": {
+            "description": "The environment of the executed program or shell.",
+            "type": "object",
+            "patternProperties": {
+                "^.*$": {
+                    "$ref": "locale.json"
+                }
+            }
+        },
+        "shell": {
+            "description": "Configuration of the shell when task type is `shell`.",
+            "type": "object",
+            "properties": {
+                "executable": {
+                    "description": "The shell to use.",
+                    "type": "string"
+                },
+                "args": {
+                    "description": "The arguments to be passed to the shell executable to run in command mode.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}

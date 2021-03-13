@@ -1,0 +1,71 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "task.json",
+    "title": "VNote Task",
+    "description": "A flexible task system for VNote",
+    "type": "object",
+    "properties": {
+        "version": {
+            "description": "The configuration's version number.",
+            "type": "string"
+        },
+        "label": {
+            "description": "The task's name.",
+            "$ref": "locale.json"
+        },
+        "icon": {
+            "description": "The task's icon.",
+            "type": "string"
+        },
+        "shortcut": {
+            "description": "The task's shortcut.",
+            "type": "string"
+        },
+        "type": {
+            "description": "The type of a custom task.",
+            "type": "string",
+            "enum": ["shell", "process"]
+        },
+        "command": {
+            "description": "The command to be executed.",
+            "$ref": "locale.json"
+        },
+        "args": {
+            "description": "The arguments passed to the command.",
+            "type": "array",
+            "items": {
+                "$ref": "locale.json"
+            }
+        },
+        "options": {
+            "description": "The command options used when the command is executed.",
+            "$ref": "options.json"
+        },
+        "inputs": {
+            "description": "The configuration of the input variables.",
+            "type": "array",
+            "items": {
+                "$ref": "input.json"
+            }
+        },
+        "windows": {
+            "description": "Windows specific task configuration.",
+            "$ref": "task.json"
+        },
+        "linux": {
+            "description": "Linux specific task configuration.",
+            "$ref": "task.json"
+        },
+        "osx": {
+            "description": "macOS specific task configuration.",
+            "$ref": "task.json"
+        },
+        "tasks": {
+            "description": "The configuration of the available tasks.",
+            "type": "array",
+            "items": {
+                "$ref": "task.json"
+            }
+        }
+    }
+}
