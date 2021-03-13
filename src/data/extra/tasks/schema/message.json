@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "message.json",
+    "title": "Message",
+    "description": "Configuration of message variables",
+    "type": "object",
+    "properties": {
+        "id": {
+            "description": "Message variable id.",
+            "type": "string"
+        },
+        "type": {
+            "description": "The type of input dialog.",
+            "type": "string",
+            "enum": ["critical", "information", "question", "warning"]
+        },
+        "title": {
+            "description": "The title of message dialog.",
+            "$ref": "locale.json"
+        },
+        "icon": {
+            "type": "string"
+        },
+        "text": {
+            "$ref": "locale.json"
+        },
+        "informativeText": {
+            "$ref": "locale.json"
+        },
+        "detailedText": {
+            "$ref": "locale.json"
+        },
+        "buttons": {
+            "type": "array"
+        }
+    },
+    "required": ["id"]
+}

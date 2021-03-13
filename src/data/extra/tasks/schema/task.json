@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "task.json",
-    "title": "VNote Task",
+    "title": "Task",
     "description": "A flexible task system for VNote",
     "type": "object",
     "properties": {

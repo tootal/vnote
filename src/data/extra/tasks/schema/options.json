@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "options.json",
-    "title": "VNote Task Command Options",
+    "title": "Options",
     "description": "The command options used when the command is executed.",
     "type": "object",
     "properties": {

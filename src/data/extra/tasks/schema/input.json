@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "input.json",
-    "title": "VNote Task Inputs",
+    "title": "Input",
     "description": "Configuration of input variables",
     "type": "object",
     "properties": {
@@ -32,6 +32,15 @@
             "items": {
                 "$ref": "locale.json"
             }
+        },
+        "buttons": {
+            "type": "array",
+            "items": {
+                "$ref": "button.json"
+            }
+        },
+        "defaultButton": {
+            "type": "number"
         }
     },
     "required": ["id"]
