@@ -6,6 +6,8 @@
 
 #include "global.h"
 
+class QMenu;
+
 namespace vnotex
 {
     class Notebook;
@@ -19,6 +21,10 @@ namespace vnotex
         Q_OBJECT
     public:
         explicit NotebookExplorer(QWidget *p_parent = nullptr);
+
+        const QSharedPointer<Notebook> &currentNotebook() const;
+
+        Node *currentExploredFolderNode() const;
 
     public slots:
         void newNotebook();
@@ -56,9 +62,9 @@ namespace vnotex
 
         TitleBar *setupTitleBar(QWidget *p_parent = nullptr);
 
-        Node *currentExploredFolderNode() const;
-
         Node *checkNotebookAndGetCurrentExploredFolderNode() const;
+
+        void setupViewMenu(QMenu *p_menu);
 
         NotebookSelector *m_selector = nullptr;
 

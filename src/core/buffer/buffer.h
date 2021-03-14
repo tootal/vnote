@@ -18,6 +18,7 @@ namespace vnotex
     class ViewWindow;
     struct FileOpenParameters;
     class BufferProvider;
+    class File;
 
     struct BufferParameters
     {
@@ -81,7 +82,10 @@ namespace vnotex
         QString getContentPath() const;
 
         // Get the base path to resolve resources.
-        QString getContentBasePath() const;
+        QString getResourcePath() const;
+
+        // Return nullptr if not available.
+        QSharedPointer<File> getFile() const;
 
         ID getID() const;
 

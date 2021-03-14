@@ -65,27 +65,24 @@ namespace vnotex
 
         QSharedPointer<Node> getRecycleBinNode() const;
 
-        QSharedPointer<Node> newNode(Node *p_parent, Node::Type p_type, const QString &p_name);
+        QSharedPointer<Node> newNode(Node *p_parent,
+                                     Node::Flags p_flags,
+                                     const QString &p_name);
 
         // Add @p_name under @p_parent to add as a new node @p_type.
         QSharedPointer<Node> addAsNode(Node *p_parent,
-                                       Node::Type p_type,
+                                       Node::Flags p_flags,
                                        const QString &p_name,
                                        const NodeParameters &p_paras);
 
         // Copy @p_path to @p_parent and add as a new node @p_type.
         QSharedPointer<Node> copyAsNode(Node *p_parent,
-                                        Node::Type p_type,
+                                        Node::Flags p_flags,
                                         const QString &p_path);
 
         virtual ID getNextNodeId() const = 0;
 
         virtual ID getAndUpdateNextNodeId() = 0;
-
-        virtual void load(Node *p_node);
-        virtual void save(const Node *p_node);
-
-        virtual void rename(Node *p_node, const QString &p_name);
 
         virtual void updateNotebookConfig() = 0;
 
@@ -102,11 +99,11 @@ namespace vnotex
         // @p_configOnly: if true, will just remove node from config.
         void removeNode(const QSharedPointer<Node> &p_node, bool p_force = false, bool p_configOnly = false);
 
-        void removeNode(const Node *p_node, bool p_force = false, bool p_configOnly = false);
+        void removeNode(Node *p_node, bool p_force = false, bool p_configOnly = false);
 
         void moveNodeToRecycleBin(const QSharedPointer<Node> &p_node);
 
-        void moveNodeToRecycleBin(const Node *p_node);
+        void moveNodeToRecycleBin(Node *p_node);
 
         // Move @p_filePath to the recycle bin, without adding it as a child node.
         void moveFileToRecycleBin(const QString &p_filePath);
@@ -129,6 +126,8 @@ namespace vnotex
         bool isBuiltInFile(const Node *p_node, const QString &p_name) const;
 
         bool isBuiltInFolder(const Node *p_node, const QString &p_name) const;
+
+        void reloadNode(Node *p_node);
 
         static const QString c_defaultAttachmentFolder;
 

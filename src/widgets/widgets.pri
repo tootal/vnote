@@ -4,6 +4,7 @@ SOURCES += \
     $$PWD/biaction.cpp \
     $$PWD/combobox.cpp \
     $$PWD/dialogs/dialog.cpp \
+    $$PWD/dialogs/exportdialog.cpp \
     $$PWD/dialogs/filepropertiesdialog.cpp \
     $$PWD/dialogs/imageinsertdialog.cpp \
     $$PWD/dialogs/importfolderdialog.cpp \
@@ -23,6 +24,7 @@ SOURCES += \
     $$PWD/dialogs/settings/settingsdialog.cpp \
     $$PWD/dialogs/settings/texteditorpage.cpp \
     $$PWD/dialogs/settings/themepage.cpp \
+    $$PWD/dialogs/sortdialog.cpp \
     $$PWD/dialogs/tableinsertdialog.cpp \
     $$PWD/dragdropareaindicator.cpp \
     $$PWD/editors/editormarkdownvieweradapter.cpp \
@@ -89,6 +91,7 @@ HEADERS += \
     $$PWD/biaction.h \
     $$PWD/combobox.h \
     $$PWD/dialogs/dialog.h \
+    $$PWD/dialogs/exportdialog.h \
     $$PWD/dialogs/importfolderutils.h \
     $$PWD/dialogs/filepropertiesdialog.h \
     $$PWD/dialogs/imageinsertdialog.h \
@@ -109,6 +112,7 @@ HEADERS += \
     $$PWD/dialogs/settings/settingsdialog.h \
     $$PWD/dialogs/settings/texteditorpage.h \
     $$PWD/dialogs/settings/themepage.h \
+    $$PWD/dialogs/sortdialog.h \
     $$PWD/dialogs/tableinsertdialog.h \
     $$PWD/dragdropareaindicator.h \
     $$PWD/editors/editormarkdownvieweradapter.h \

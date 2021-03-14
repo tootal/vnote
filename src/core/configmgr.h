@@ -81,6 +81,10 @@ namespace vnotex
 
         QString getUserTaskFolder() const;
 
+        QString getAppWebStylesFolder() const;
+
+        QString getUserWebStylesFolder() const;
+
         QString getAppDocsFolder() const;
 
         QString getUserDocsFolder() const;
@@ -101,6 +105,8 @@ namespace vnotex
         static QString getApplicationFilePath();
 
         static QString getApplicationDirPath();
+
+        static QString getDocumentOrHomePath();
 
         static const QString c_orgName;
 

@@ -152,6 +152,7 @@ const QSharedPointer<Node> &Notebook::getRootNode() const
 {
     if (!m_root) {
         const_cast<Notebook *>(this)->m_root = m_configMgr->loadRootNode();
+        Q_ASSERT(m_root->isRoot());
     }
 
     return m_root;
@@ -160,7 +161,7 @@ const QSharedPointer<Node> &Notebook::getRootNode() const
 QSharedPointer<Node> Notebook::getRecycleBinNode() const
 {
     auto root = getRootNode();
-    auto children = root->getChildren();
+    const auto &children = root->getChildrenRef();
     auto it = std::find_if(children.begin(),
                            children.end(),
                            [this](const QSharedPointer<Node> &p_node) {
@@ -174,38 +175,14 @@ QSharedPointer<Node> Notebook::getRecycleBinNode() const
     return nullptr;
 }
 
-QSharedPointer<Node> Notebook::newNode(Node *p_parent, Node::Type p_type, const QString &p_name)
+QSharedPointer<Node> Notebook::newNode(Node *p_parent, Node::Flags p_flags, const QString &p_name)
 {
-    return m_configMgr->newNode(p_parent, p_type, p_name);
+    return m_configMgr->newNode(p_parent, p_flags, p_name);
 }
 
 const QDateTime &Notebook::getCreatedTimeUtc() const
 {
     return m_createdTimeUtc;
-}
-
-void Notebook::load(Node *p_node)
-{
-    Q_ASSERT(p_node->getNotebook() == this);
-    if (p_node->isLoaded()) {
-        return;
-    }
-
-    m_configMgr->loadNode(p_node);
-}
-
-void Notebook::save(const Node *p_node)
-{
-    Q_ASSERT(p_node->getNotebook() == this);
-    m_configMgr->saveNode(p_node);
-}
-
-void Notebook::rename(Node *p_node, const QString &p_name)
-{
-    Q_ASSERT(p_node->getNotebook() == this);
-    m_configMgr->renameNode(p_node, p_name);
-
-    emit nodeUpdated(p_node);
 }
 
 QSharedPointer<Node> Notebook::loadNodeByPath(const QString &p_path)
@@ -226,7 +203,7 @@ QSharedPointer<Node> Notebook::loadNodeByPath(const QString &p_path)
         relativePath = p_path;
     }
 
-    return m_configMgr->loadNodeByPath(m_root, relativePath);
+    return m_configMgr->loadNodeByPath(getRootNode(), relativePath);
 }
 
 QSharedPointer<Node> Notebook::copyNodeAsChildOf(const QSharedPointer<Node> &p_src, Node *p_dest, bool p_move)
@@ -237,7 +214,7 @@ QSharedPointer<Node> Notebook::copyNodeAsChildOf(const QSharedPointer<Node> &p_s
     if (Node::isAncestor(p_src.data(), p_dest)) {
         Exception::throwOne(Exception::Type::InvalidArgument,
                             QString("source (%1) is the ancestor of destination (%2)")
-                                   .arg(p_src->fetchRelativePath(), p_dest->fetchRelativePath()));
+                                   .arg(p_src->fetchPath(), p_dest->fetchPath()));
         return nullptr;
     }
 
@@ -250,17 +227,15 @@ QSharedPointer<Node> Notebook::copyNodeAsChildOf(const QSharedPointer<Node> &p_s
 
 void Notebook::removeNode(const QSharedPointer<Node> &p_node, bool p_force, bool p_configOnly)
 {
+    Q_ASSERT(p_node && !p_node->isRoot());
     Q_ASSERT(p_node->getNotebook() == this);
     m_configMgr->removeNode(p_node, p_force, p_configOnly);
 }
 
-void Notebook::removeNode(const Node *p_node, bool p_force, bool p_configOnly)
+void Notebook::removeNode(Node *p_node, bool p_force, bool p_configOnly)
 {
-    Q_ASSERT(p_node && !p_node->isRoot());
-    auto children = p_node->getParent()->getChildren();
-    auto it = std::find(children.begin(), children.end(), p_node);
-    Q_ASSERT(it != children.end());
-    removeNode(*it, p_force, p_configOnly);
+    Q_ASSERT(p_node);
+    removeNode(p_node->sharedFromThis(), p_force, p_configOnly);
 }
 
 bool Notebook::isRecycleBinNode(const Node *p_node) const
@@ -284,22 +259,14 @@ bool Notebook::isNodeInRecycleBin(const Node *p_node) const
     return false;
 }
 
-void Notebook::moveNodeToRecycleBin(const Node *p_node)
+void Notebook::moveNodeToRecycleBin(Node *p_node)
 {
-    Q_ASSERT(p_node && !p_node->isRoot());
-    auto children = p_node->getParent()->getChildren();
-    for (auto &child : children) {
-        if (p_node == child) {
-            moveNodeToRecycleBin(child);
-            return;
-        }
-    }
-
-    Q_ASSERT(false);
+    moveNodeToRecycleBin(p_node->sharedFromThis());
 }
 
 void Notebook::moveNodeToRecycleBin(const QSharedPointer<Node> &p_node)
 {
+    Q_ASSERT(p_node && !p_node->isRoot());
     auto destNode = getOrCreateRecycleBinDateNode();
     copyNodeAsChildOf(p_node, destNode.data(), true);
 }
@@ -314,7 +281,7 @@ QSharedPointer<Node> Notebook::getOrCreateRecycleBinDateNode()
                                               FileUtils::isPlatformNameCaseSensitive());
     if (!dateNode) {
         // Create a date node.
-        dateNode = newNode(recycleBinNode.data(), Node::Type::Folder, dateNodeName);
+        dateNode = newNode(recycleBinNode.data(), Node::Flag::Container, dateNodeName);
     }
 
     return dateNode;
@@ -322,8 +289,9 @@ QSharedPointer<Node> Notebook::getOrCreateRecycleBinDateNode()
 
 void Notebook::emptyNode(const Node *p_node, bool p_force)
 {
+    // Copy the children.
     auto children = p_node->getChildren();
-    for (auto &child : children) {
+    for (const auto &child : children) {
         removeNode(child, p_force);
     }
 }
@@ -331,7 +299,7 @@ void Notebook::emptyNode(const Node *p_node, bool p_force)
 void Notebook::moveFileToRecycleBin(const QString &p_filePath)
 {
     auto node = getOrCreateRecycleBinDateNode();
-    auto destFilePath = PathUtils::concatenateFilePath(node->fetchRelativePath(),
+    auto destFilePath = PathUtils::concatenateFilePath(node->fetchPath(),
                                                        PathUtils::fileName(p_filePath));
     destFilePath = getBackend()->renameIfExistsCaseInsensitive(destFilePath);
     m_backend->copyFile(p_filePath, destFilePath);
@@ -344,8 +312,8 @@ void Notebook::moveFileToRecycleBin(const QString &p_filePath)
 void Notebook::moveDirToRecycleBin(const QString &p_dirPath)
 {
     auto node = getOrCreateRecycleBinDateNode();
-    auto destDirPath = PathUtils::concatenateFilePath(node->fetchRelativePath(),
-                                                       PathUtils::fileName(p_dirPath));
+    auto destDirPath = PathUtils::concatenateFilePath(node->fetchPath(),
+                                                      PathUtils::fileName(p_dirPath));
     destDirPath = getBackend()->renameIfExistsCaseInsensitive(destDirPath);
     m_backend->copyDir(p_dirPath, destDirPath);
 
@@ -355,11 +323,11 @@ void Notebook::moveDirToRecycleBin(const QString &p_dirPath)
 }
 
 QSharedPointer<Node> Notebook::addAsNode(Node *p_parent,
-                                         Node::Type p_type,
+                                         Node::Flags p_flags,
                                          const QString &p_name,
                                          const NodeParameters &p_paras)
 {
-    return m_configMgr->addAsNode(p_parent, p_type, p_name, p_paras);
+    return m_configMgr->addAsNode(p_parent, p_flags, p_name, p_paras);
 }
 
 bool Notebook::isBuiltInFile(const Node *p_node, const QString &p_name) const
@@ -373,8 +341,13 @@ bool Notebook::isBuiltInFolder(const Node *p_node, const QString &p_name) const
 }
 
 QSharedPointer<Node> Notebook::copyAsNode(Node *p_parent,
-                                          Node::Type p_type,
+                                          Node::Flags p_flags,
                                           const QString &p_path)
 {
-    return m_configMgr->copyAsNode(p_parent, p_type, p_path);
+    return m_configMgr->copyAsNode(p_parent, p_flags, p_path);
+}
+
+void Notebook::reloadNode(Node *p_node)
+{
+    m_configMgr->reloadNode(p_node);
 }

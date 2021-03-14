@@ -460,7 +460,7 @@ void MarkdownViewWindow::syncTextEditorFromBuffer(bool p_syncPositionFromReadMod
     m_editor->setBuffer(buffer);
     if (buffer) {
         m_editor->setReadOnly(buffer->isReadOnly());
-        m_editor->setBasePath(buffer->getContentBasePath());
+        m_editor->setBasePath(buffer->getResourcePath());
         m_editor->setText(buffer->getContent());
         m_editor->setModified(buffer->isModified());
 
@@ -497,10 +497,12 @@ void MarkdownViewWindow::syncViewerFromBuffer(bool p_syncPositionFromEditMode)
         // TODO: Check buffer for last position recover.
 
         // Use getPath() instead of getBasePath() to make in-page anchor work.
+        adapter()->reset();
         m_viewer->setHtml(HtmlTemplateHelper::getMarkdownViewerTemplate(),
                           PathUtils::pathToUrl(buffer->getContentPath()));
         adapter()->setText(m_bufferRevision, buffer->getContent(), lineNumber);
     } else {
+        adapter()->reset();
         m_viewer->setHtml("");
         adapter()->setText(0, "", -1);
     }

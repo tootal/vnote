@@ -34,6 +34,8 @@ namespace vnotex
 
         virtual QString getContentPath() const = 0;
 
+        virtual QString getResourcePath() const = 0;
+
         virtual void write(const QString &p_content) = 0;
 
         virtual QString read() const = 0;
@@ -71,6 +73,9 @@ namespace vnotex
         virtual bool checkFileChangedOutside() const;
 
         virtual bool isReadOnly() const = 0;
+
+        // Return nullptr if not available.
+        virtual QSharedPointer<File> getFile() const = 0;
 
     protected:
         virtual QDateTime getLastModifiedFromFile() const;
