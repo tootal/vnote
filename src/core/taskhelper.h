@@ -9,6 +9,7 @@ class QProcess;
 namespace vnotex {
 
 class Notebook;
+class Task;
 
 class TaskHelper
 {
@@ -37,7 +38,8 @@ public:
     static QString getPathSeparator();
     
     static QString handleCommand(const QString &p_text,
-                                 QProcess *p_process);
+                                 QProcess *p_process,
+                                 const Task *p_task);
     
 private:
     TaskHelper();

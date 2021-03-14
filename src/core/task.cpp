@@ -146,7 +146,7 @@ Task *Task::fromJsonV0(Task *p_task,
         
         for (const auto &input : inputs) {
             auto in = input.toObject();
-            InputVarDTO i;
+            InputDTO i;
             if (in.contains("id")) {
                 i.id = in["id"].toString();
             } else {
@@ -178,10 +178,54 @@ Task *Task::fromJsonV0(Task *p_task,
             }
             
             if (i.type == "pickString" && !i.default_.isNull() && !i.options.contains(i.default_)) {
-                qWarning() << "preset must be one of the option values";
+                qWarning() << "default must be one of the option values";
             }
             
             p_task->dto.inputs << i;
+        }
+    }
+    
+    if (p_obj.contains("messages")) {
+        p_task->dto.messages.clear();
+        auto messages = p_obj["messages"].toArray();
+        
+        for (const auto &message : messages) {
+            auto msg = message.toObject();
+            MessageDTO m;
+            if (msg.contains("id")) {
+                m.id = msg["id"].toString();
+            } else {
+                qWarning() << "Message configuration not contain id";
+            }
+            
+            if (msg.contains("type")) {
+                m.type = msg["type"].toString();
+            } else {
+                m.type = "information";
+            }
+            
+            if (msg.contains("title")) {
+                m.title = getLocaleString(msg["title"], p_task->m_locale);
+            }
+            
+            if (msg.contains("text")) {
+                m.text = getLocaleString(msg["text"], p_task->m_locale);
+            }
+            
+            if (msg.contains("detailedText")) {
+                m.detailedText = getLocaleString(msg["detailedText"], p_task->m_locale);
+            }
+            
+            if (msg.contains("buttons")) {
+                auto buttons = msg["buttons"].toArray();
+                for (auto button : buttons) {
+                    auto btn = button.toObject();
+                    ButtonDTO b;
+                    b.text = getLocaleString(btn["text"], p_task->m_locale);
+                    m.buttons << b;
+                }
+            }
+            p_task->dto.messages << m;
         }
     }
     
@@ -281,12 +325,12 @@ const QVector<Task *> &Task::getTasks() const
     return m_tasks;
 }
 
-const QVector<InputVarDTO> &Task::getInputs() const
+const QVector<InputDTO> &Task::getInputs() const
 {
     return dto.inputs;
 }
 
-InputVarDTO Task::getInput(const QString &p_id) const
+InputDTO Task::getInput(const QString &p_id) const
 {
     for (auto i : dto.inputs) {
         if (i.id == p_id) {
@@ -296,6 +340,18 @@ InputVarDTO Task::getInput(const QString &p_id) const
     qDebug() << getLabel();
     qWarning() << "input" << p_id << "not found";
     throw "Input variable can not found";
+}
+
+MessageDTO Task::getMessage(const QString &p_id) const
+{
+    for (auto msg : dto.messages) {
+        if (msg.id == p_id) {
+            return msg;
+        }
+    }
+    qDebug() << getLabel();
+    qWarning() << "message" << p_id << "not found";
+    throw "Message can not found";
 }
 
 QString Task::getFile() const
@@ -374,7 +430,7 @@ QProcess *Task::setupProcess() const
     connect(process, &QProcess::readyReadStandardOutput,
             this, [process, this]() {
         auto text = textDecode(process->readAllStandardOutput());
-        text = TaskHelper::handleCommand(text, process);
+        text = TaskHelper::handleCommand(text, process, this);
         emit showOutput(text);
     });
     connect(process, &QProcess::readyReadStandardError,

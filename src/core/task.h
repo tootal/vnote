@@ -13,18 +13,36 @@ class QAction;
 
 namespace vnotex {
 
-    struct InputVarDTO {
+    struct ButtonDTO {
+        QString text;
+    };
+
+    struct InputDTO {
         QString id;
-
+    
         QString type;
-
+    
         QString description;
-
+    
         QString default_;
-
+    
         bool password;
-
+    
         QStringList options;
+    };
+    
+    struct MessageDTO {
+        QString id;
+    
+        QString type;
+        
+        QString title;
+        
+        QString text;
+        
+        QString detailedText;
+        
+        QVector<ButtonDTO> buttons;
     };
 
     struct ShellOptionsDTO {
@@ -56,7 +74,9 @@ namespace vnotex {
 
         QString shortcut;
 
-        QVector<InputVarDTO> inputs;
+        QVector<InputDTO> inputs;
+        
+        QVector<MessageDTO> messages;
 
         TaskOptionsDTO options;
 
@@ -106,9 +126,11 @@ namespace vnotex {
         
         const QVector<Task*> &getTasks() const;
         
-        const QVector<InputVarDTO> &getInputs() const;
+        const QVector<InputDTO> &getInputs() const;
         
-        InputVarDTO getInput(const QString &p_id) const;
+        InputDTO getInput(const QString &p_id) const;
+        
+        MessageDTO getMessage(const QString &p_id) const;
         
         QString getFile() const;
         

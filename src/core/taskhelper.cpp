@@ -141,7 +141,8 @@ QString TaskHelper::getPathSeparator()
 }
 
 QString TaskHelper::handleCommand(const QString &p_text, 
-                                  QProcess *p_process)
+                                  QProcess *p_process,
+                                  const Task *p_task)
 {
     QRegularExpression re(R"(^::([a-zA-Z-]+)(.*?)?::(.*?)$)", 
                           QRegularExpression::MultilineOption);
@@ -163,17 +164,28 @@ QString TaskHelper::handleCommand(const QString &p_text,
             }
             arg.insert(name, val);
         }
-        if (cmd == "show-messagebox") {
+        if (cmd == "show-message") {
             QMessageBox box;
-            box.setText(value);
-            box.setWindowTitle(arg.value("title"));
+            // fill message dto
+            auto msgId = arg.value("id");
             QVector<QPushButton*> buttons;
-            // add buttons
-            {
-                auto btns = arg.value("buttons").split("|");
-                for (const auto &btn : btns) {
-                    QPushButton *button = box.addButton(btn, QMessageBox::ActionRole);
-                    buttons.append(button);
+            if (!msgId.isEmpty()) {
+                MessageDTO msgd = p_task->getMessage(msgId);
+                box.setWindowTitle(msgd.title);
+                box.setText(msgd.text);
+                box.setDetailedText(msgd.detailedText);
+                for (auto button : msgd.buttons) {
+                    buttons.append(box.addButton(button.text, QMessageBox::ActionRole));
+                }
+            }
+            // fill args
+            if (arg.contains("title")) box.setWindowTitle(arg["title"]);
+            if (arg.contains("text")) box.setText(arg["text"]);
+            if (arg.contains("detailedText")) box.setWindowTitle(arg["detailedText"]);
+            if (arg.contains("buttons")) {
+                buttons.clear();
+                for (auto button : arg["buttons"].split('|')) {
+                    buttons.append(box.addButton(button, QMessageBox::ActionRole));
                 }
             }
             box.exec();
