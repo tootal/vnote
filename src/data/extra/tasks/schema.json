@@ -48,6 +48,12 @@
                 "$ref": "input.json"
             }
         },
+        "messages": {
+            "type": "array",
+            "items": {
+                "$ref": "message.json"
+            }
+        },
         "windows": {
             "description": "Windows specific task configuration.",
             "$ref": "task.json"

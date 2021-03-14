@@ -31,7 +31,10 @@
             "$ref": "locale.json"
         },
         "buttons": {
-            "type": "array"
+            "type": "array",
+            "items": {
+                "$ref": "button.json"
+            }
         }
     },
     "required": ["id"]
