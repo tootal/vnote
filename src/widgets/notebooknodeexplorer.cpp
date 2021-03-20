@@ -761,6 +761,9 @@ void NotebookNodeExplorer::createContextMenuOnRoot(QMenu *p_menu)
     act = createAction(Action::Reload, p_menu);
     p_menu->addAction(act);
 
+    act = createAction(Action::ReloadIndex, p_menu);
+    p_menu->addAction(act);
+
     act = createAction(Action::OpenLocation, p_menu);
     p_menu->addAction(act);
 }
@@ -775,6 +778,9 @@ void NotebookNodeExplorer::createContextMenuOnNode(QMenu *p_menu, const Node *p_
         act = createAction(Action::Reload, p_menu);
         p_menu->addAction(act);
 
+        act = createAction(Action::ReloadIndex, p_menu);
+        p_menu->addAction(act);
+
         if (selectedSize == 1) {
             act = createAction(Action::EmptyRecycleBin, p_menu);
             p_menu->addAction(act);
@@ -786,6 +792,11 @@ void NotebookNodeExplorer::createContextMenuOnNode(QMenu *p_menu, const Node *p_
         // Node in recycle bin.
         act = createAction(Action::Open, p_menu);
         p_menu->addAction(act);
+
+        if (selectedSize == 1 && p_node->isContainer()) {
+            act = createAction(Action::ExpandAll, p_menu);
+            p_menu->addAction(act);
+        }
 
         p_menu->addSeparator();
 
@@ -800,6 +811,9 @@ void NotebookNodeExplorer::createContextMenuOnNode(QMenu *p_menu, const Node *p_
         act = createAction(Action::Reload, p_menu);
         p_menu->addAction(act);
 
+        act = createAction(Action::ReloadIndex, p_menu);
+        p_menu->addAction(act);
+
         if (selectedSize == 1) {
             p_menu->addSeparator();
 
@@ -812,6 +826,11 @@ void NotebookNodeExplorer::createContextMenuOnNode(QMenu *p_menu, const Node *p_
     } else {
         act = createAction(Action::Open, p_menu);
         p_menu->addAction(act);
+
+        if (selectedSize == 1 && p_node->isContainer()) {
+            act = createAction(Action::ExpandAll, p_menu);
+            p_menu->addAction(act);
+        }
 
         p_menu->addSeparator();
 
@@ -843,6 +862,9 @@ void NotebookNodeExplorer::createContextMenuOnNode(QMenu *p_menu, const Node *p_
         p_menu->addSeparator();
 
         act = createAction(Action::Reload, p_menu);
+        p_menu->addAction(act);
+
+        act = createAction(Action::ReloadIndex, p_menu);
         p_menu->addAction(act);
 
         act = createAction(Action::Sort, p_menu);
@@ -1091,11 +1113,25 @@ QAction *NotebookNodeExplorer::createAction(Action p_act, QObject *p_parent)
         connect(act, &QAction::triggered,
                 this, [this]() {
                     auto node = currentExploredFolderNode();
-                    if (m_notebook && node) {
-                        // TODO: emit signals to notify other components.
-                        m_notebook->reloadNode(node);
-                    }
                     updateNode(node);
+                });
+        break;
+
+    case Action::ReloadIndex:
+        act = new QAction(tr("Relo&ad Index From Disk"), p_parent);
+        connect(act, &QAction::triggered,
+                this, [this]() {
+                    if (!m_notebook) {
+                        return;
+                    }
+
+                    auto event = QSharedPointer<Event>::create();
+                    emit nodeAboutToReload(m_notebook->getRootNode().data(), event);
+                    if (!event->m_response.toBool()) {
+                        return;
+                    }
+
+                    reload();
                 });
         break;
 
@@ -1112,6 +1148,12 @@ QAction *NotebookNodeExplorer::createAction(Action p_act, QObject *p_parent)
         act = new QAction(tr("&Open"), p_parent);
         connect(act, &QAction::triggered,
                 this, &NotebookNodeExplorer::openSelectedNodes);
+        break;
+
+    case Action::ExpandAll:
+        act = new QAction(tr("&Expand All\t*"), p_parent);
+        connect(act, &QAction::triggered,
+                this, &NotebookNodeExplorer::expandCurrentNodeAll);
         break;
     }
 
@@ -1712,6 +1754,15 @@ Node *NotebookNodeExplorer::currentExploredFolderNode() const
     return node;
 }
 
+Node *NotebookNodeExplorer::currentExploredNode() const
+{
+    if (!m_notebook) {
+        return nullptr;
+    }
+
+    return getCurrentNode();
+}
+
 void NotebookNodeExplorer::setViewOrder(int p_order)
 {
     if (m_viewOrder == p_order) {
@@ -1795,4 +1846,35 @@ bool NotebookNodeExplorer::checkInvalidNode(const Node *p_node) const
     }
 
     return false;
+}
+
+void NotebookNodeExplorer::expandCurrentNodeAll()
+{
+    auto item = m_masterExplorer->currentItem();
+    if (!item || item->childCount() == 0) {
+        return;
+    }
+    auto data = getItemNodeData(item);
+    if (!data.isNode()) {
+        return;
+    }
+
+    expandItemRecursively(item);
+}
+
+void NotebookNodeExplorer::expandItemRecursively(QTreeWidgetItem *p_item)
+{
+    if (!p_item) {
+        return;
+    }
+
+    p_item->setExpanded(true);
+    const int cnt = p_item->childCount();
+    if (cnt == 0) {
+        return;
+    }
+
+    for (int i = 0; i < cnt; ++i) {
+        expandItemRecursively(p_item->child(i));
+    }
 }

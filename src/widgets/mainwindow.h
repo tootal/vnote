@@ -10,6 +10,8 @@
 class QDockWidget;
 class QSystemTrayIcon;
 class QTextEdit;
+class QTimer;
+class QLabel;
 
 namespace vnotex
 {
@@ -32,7 +34,7 @@ namespace vnotex
         MainWindow(const MainWindow &) = delete;
         void operator=(const MainWindow &) = delete;
 
-        void kickOffOnStart();
+        void kickOffOnStart(const QStringList &p_paths);
 
         void resetStateAndGeometry();
 
@@ -53,6 +55,8 @@ namespace vnotex
         void showMainWindow();
 
         void quitApp();
+
+        void openFiles(const QStringList &p_files);
 
     signals:
         void mainWindowStarted();
@@ -76,6 +80,8 @@ namespace vnotex
         void updateTabBarStyle();
 
         void exportNotes();
+
+        void showTips(const QString &p_message, int p_timeoutMilliseconds);
 
     private:
         // Index in m_docks.
@@ -108,6 +114,10 @@ namespace vnotex
 
         void setupStatusBar();
 
+        void setupTipsArea();
+
+        void createTipsArea();
+
         void saveStateAndGeometry();
 
         void loadStateAndGeometry();
@@ -124,6 +134,8 @@ namespace vnotex
         void setupShortcuts();
 
         void setupSystemTray();
+
+        void setTipsAreaVisible(bool p_visible);
 
         ToolBarHelper m_toolBarHelper;
 
@@ -152,6 +164,10 @@ namespace vnotex
         Qt::WindowStates m_windowOldState = Qt::WindowMinimized;
 
         QSystemTrayIcon *m_trayIcon = nullptr;
+
+        QLabel *m_tipsLabel = nullptr;
+
+        QTimer *m_tipsTimer = nullptr;
     };
 } // ns vnotex
 

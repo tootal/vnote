@@ -112,6 +112,8 @@ namespace vnotex
 
         Node *currentExploredFolderNode() const;
 
+        Node *currentExploredNode() const;
+
     signals:
         void nodeActivated(Node *p_node, const QSharedPointer<FileOpenParameters> &p_paras);
 
@@ -122,6 +124,8 @@ namespace vnotex
 
         // @m_response of @p_event: true to continue the removal, false to cancel the removal.
         void nodeAboutToRemove(Node *p_node, const QSharedPointer<Event> &p_event);
+
+        void nodeAboutToReload(Node *p_node, const QSharedPointer<Event> &p_event);
 
     private:
         enum Column { Name = 0 };
@@ -142,8 +146,10 @@ namespace vnotex
             RemoveFromConfig,
             Sort,
             Reload,
+            ReloadIndex,
             ImportToConfig,
-            Open
+            Open,
+            ExpandAll
         };
 
         void setupUI();
@@ -251,6 +257,10 @@ namespace vnotex
         // Check whether @p_node is a valid node. Will notify user.
         // Return true if it is invalid.
         bool checkInvalidNode(const Node *p_node) const;
+
+        void expandCurrentNodeAll();
+
+        void expandItemRecursively(QTreeWidgetItem *p_item);
 
         static NotebookNodeExplorer::NodeData getItemNodeData(const QTreeWidgetItem *p_item);
 

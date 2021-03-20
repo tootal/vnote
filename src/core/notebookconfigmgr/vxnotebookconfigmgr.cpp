@@ -14,6 +14,9 @@
 #include <utils/fileutils.h>
 #include <utils/pathutils.h>
 #include <exception.h>
+#include <core/configmgr.h>
+#include <core/editorconfig.h>
+#include <core/coreconfig.h>
 
 #include <utils/contentmediautils.h>
 
@@ -164,6 +167,10 @@ const QString VXNotebookConfigMgr::c_nodeConfigName = "vx.json";
 
 const QString VXNotebookConfigMgr::c_recycleBinFolderName = "vx_recycle_bin";
 
+bool VXNotebookConfigMgr::s_initialized = false;
+
+QVector<QRegExp> VXNotebookConfigMgr::s_externalNodeExcludePatterns;
+
 VXNotebookConfigMgr::VXNotebookConfigMgr(const QString &p_name,
                                          const QString &p_displayName,
                                          const QString &p_description,
@@ -172,6 +179,17 @@ VXNotebookConfigMgr::VXNotebookConfigMgr(const QString &p_name,
     : BundleNotebookConfigMgr(p_backend, p_parent),
       m_info(p_name, p_displayName, p_description)
 {
+    if (!s_initialized) {
+        s_initialized = true;
+
+        const auto &patterns = ConfigMgr::getInst().getCoreConfig().getExternalNodeExcludePatterns();
+        s_externalNodeExcludePatterns.reserve(patterns.size());
+        for (const auto &pat : patterns) {
+            if (!pat.isEmpty()) {
+                s_externalNodeExcludePatterns.push_back(QRegExp(pat, Qt::CaseInsensitive, QRegExp::Wildcard));
+            }
+        }
+    }
 }
 
 QString VXNotebookConfigMgr::getName() const
@@ -803,8 +821,12 @@ QString VXNotebookConfigMgr::fetchNodeAttachmentFolder(const QString &p_nodePath
 
 bool VXNotebookConfigMgr::isBuiltInFile(const Node *p_node, const QString &p_name) const
 {
+    static const QString backupFileExtension = ConfigMgr::getInst().getEditorConfig().getBackupFileExtension().toLower();
+
     const auto name = p_name.toLower();
-    if (name == c_nodeConfigName || name == "_vnote.json") {
+    if (name == c_nodeConfigName
+        || name == QStringLiteral("_vnote.json")
+        || name.endsWith(backupFileExtension)) {
         return true;
     }
     return BundleNotebookConfigMgr::isBuiltInFile(p_node, p_name);
@@ -921,6 +943,10 @@ QVector<QSharedPointer<ExternalNode>> VXNotebookConfigMgr::fetchExternalChildren
                 continue;
             }
 
+            if (isExcludedFromExternalNode(folder)) {
+                continue;
+            }
+
             if (p_node->containsContainerChild(folder)) {
                 continue;
             }
@@ -937,6 +963,10 @@ QVector<QSharedPointer<ExternalNode>> VXNotebookConfigMgr::fetchExternalChildren
                 continue;
             }
 
+            if (isExcludedFromExternalNode(file)) {
+                continue;
+            }
+
             if (p_node->containsContentChild(file)) {
                 continue;
             }
@@ -948,7 +978,12 @@ QVector<QSharedPointer<ExternalNode>> VXNotebookConfigMgr::fetchExternalChildren
     return externalNodes;
 }
 
-void VXNotebookConfigMgr::reloadNode(Node *p_node)
+bool VXNotebookConfigMgr::isExcludedFromExternalNode(const QString &p_name) const
 {
-    // TODO.
+    for (const auto &regExp : s_externalNodeExcludePatterns) {
+        if (regExp.exactMatch(p_name)) {
+            return true;
+        }
+    }
+    return false;
 }

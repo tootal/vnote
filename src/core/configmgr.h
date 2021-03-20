@@ -108,6 +108,8 @@ namespace vnotex
 
         static QString getDocumentOrHomePath();
 
+        static QString getApplicationVersion();
+
         static const QString c_orgName;
 
         static const QString c_appName;
@@ -132,6 +134,8 @@ namespace vnotex
         // Check if app config exists and is updated.
         // Update it if in need.
         void checkAppConfig();
+
+        static QString getDefaultConfigFilePath();
 
         QScopedPointer<MainConfig> m_config;;
 
