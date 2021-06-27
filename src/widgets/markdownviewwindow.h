@@ -11,17 +11,18 @@ class QStackedWidget;
 namespace vte
 {
     class MarkdownEditorConfig;
+    struct TextEditorParameters;
 }
 
 namespace vnotex
 {
-    struct FileOpenParameters;
     class MarkdownEditor;
     class MarkdownViewer;
     class EditorMarkdownViewerAdapter;
     class PreviewHelper;
     struct Outline;
     class MarkdownEditorConfig;
+    class EditorConfig;
 
     class MarkdownViewWindow : public ViewWindow
     {
@@ -29,7 +30,7 @@ namespace vnotex
     public:
         friend class TextViewWindowHelper;
 
-        MarkdownViewWindow(const QSharedPointer<FileOpenParameters> &p_paras, QWidget *p_parent = nullptr);
+        MarkdownViewWindow(QWidget *p_parent = nullptr);
 
         ~MarkdownViewWindow();
         
@@ -37,9 +38,13 @@ namespace vnotex
 
         QString getLatestContent() const Q_DECL_OVERRIDE;
 
-        void setMode(Mode p_mode) Q_DECL_OVERRIDE;
+        void setMode(ViewWindowMode p_mode) Q_DECL_OVERRIDE;
 
         QSharedPointer<OutlineProvider> getOutlineProvider() Q_DECL_OVERRIDE;
+
+        void openTwice(const QSharedPointer<FileOpenParameters> &p_paras) Q_DECL_OVERRIDE;
+
+        ViewWindowSession saveSession() const Q_DECL_OVERRIDE;
 
     public slots:
         void handleEditorConfigChange() Q_DECL_OVERRIDE;
@@ -47,7 +52,7 @@ namespace vnotex
     protected slots:
         void setModified(bool p_modified) Q_DECL_OVERRIDE;
 
-        void handleBufferChangedInternal() Q_DECL_OVERRIDE;
+        void handleBufferChangedInternal(const QSharedPointer<FileOpenParameters> &p_paras) Q_DECL_OVERRIDE;
 
         void handleTypeAction(TypeAction p_action) Q_DECL_OVERRIDE;
 
@@ -94,6 +99,8 @@ namespace vnotex
 
         void setupViewer();
 
+        void setupPreviewHelper();
+
         void syncTextEditorFromBuffer(bool p_syncPositionFromReadMode);
 
         void syncViewerFromBuffer(bool p_syncPositionFromEditMode);
@@ -112,9 +119,6 @@ namespace vnotex
 
         EditorMarkdownViewerAdapter *adapter() const;
 
-        // We need a non-virtual version for constructor.
-        void setModeInternal(Mode p_mode);
-
         // Get the position to sync from editor.
         // Return -1 for an invalid position.
         int getEditLineNumber() const;
@@ -129,12 +133,20 @@ namespace vnotex
 
         void updateWebViewerConfig(const MarkdownEditorConfig &p_config);
 
+        void setModeInternal(ViewWindowMode p_mode, bool p_syncBuffer);
+
+        void handleFileOpenParameters(const QSharedPointer<FileOpenParameters> &p_paras, bool p_twice);
+
+        void scrollToLine(int p_lineNumber);
+
+        bool isReadMode() const;
+
         template <class T>
         static QSharedPointer<Outline> headingsToOutline(const QVector<T> &p_headings);
 
         static QSharedPointer<vte::MarkdownEditorConfig> createMarkdownEditorConfig(const MarkdownEditorConfig &p_config);
 
-        bool m_initialized = false;
+        static QSharedPointer<vte::TextEditorParameters> createMarkdownEditorParameters(const EditorConfig& p_editorConfig, const MarkdownEditorConfig &p_config);
 
         // Splitter to hold editor and viewer.
         QSplitter *m_splitter = nullptr;
@@ -163,9 +175,7 @@ namespace vnotex
 
         int m_markdownEditorConfigRevision = 0;
 
-        Mode m_previousMode = Mode::Invalid;
-
-        QSharedPointer<FileOpenParameters> m_openParas;
+        ViewWindowMode m_previousMode = ViewWindowMode::Invalid;
 
         QSharedPointer<OutlineProvider> m_outlineProvider;
     };

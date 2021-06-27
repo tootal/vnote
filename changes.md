@@ -1,4 +1,41 @@
 # Changes
+## v3.3.0
+* Editor: support auto indent, auto list
+* Support opening notes with external programs
+* Add a delay after code/math blocks update before preview
+
+## v3.2.0
+* Support local PlantUml and Graphviz rendering
+* Add shortcuts to tab navigation in ViewSplit
+* Editor: support auto bracket and overridding font family
+
+## v3.1.0
+* Support Japanese translation (Thanks @miurahr)
+* MarkdownEditor: guess image suffix when fetching to local
+* Refine read mode styles (Thanks @heartnn)
+* Support recovering edit session on start
+* Support recovering notebook explorer session on start
+* Support Flash Page
+* Support Quick Access
+* Allow to keep docks (like Outline) when expanding content area
+
+## v3.0.1
+* Support spell check via Hunspell
+* `Ctrl+Alt+F` to trigger full-text search
+* Auto focus to the input widget when activating full-text search
+* Fix Expand Content Area with panels
+
+## v3.0.0-beta.11
+* Full-text search
+
+## v3.0.0-beta.10
+* Show more tips
+* Add exclude patterns for external nodes
+* Add command line parser and support opening files from command line
+* Update Mermaid.js to 8.9.1
+* Support exporting current note
+* Add ExpandAll to node explorer
+
 ## v3.0.0-beta.9
 * Fix crash when exporting external files
 * Support manual sorting folders and notes

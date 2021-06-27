@@ -55,10 +55,11 @@ void FindAndReplaceWidget::setupUI()
         const auto &themeMgr = VNoteX::getInst().getThemeMgr();
         auto iconFile = themeMgr.getIconFile(QStringLiteral("close.svg"));
         auto closeBtn = new QToolButton(this);
-        closeBtn->setProperty(PropertyDefs::s_actionToolButton, true);
+        closeBtn->setProperty(PropertyDefs::c_actionToolButton, true);
         titleLayout->addWidget(closeBtn);
 
         auto closeAct = new QAction(IconUtils::fetchIcon(iconFile), QString(), closeBtn);
+        closeAct->setToolTip(tr("Close"));
         closeBtn->setDefaultAction(closeAct);
         connect(closeAct, &QAction::triggered,
                 this, &FindAndReplaceWidget::close);
@@ -76,6 +77,8 @@ void FindAndReplaceWidget::setupUI()
         m_findLineEdit->setPlaceholderText(tr("Search"));
         connect(m_findLineEdit, &QLineEdit::textChanged,
                 m_findTextTimer, QOverload<>::of(&QTimer::start));
+
+        setFocusProxy(m_findLineEdit);
 
         auto findNextBtn = new QPushButton(tr("Find &Next"), this);
         findNextBtn->setDefault(true);
@@ -223,7 +226,7 @@ void FindAndReplaceWidget::updateFindOptions()
         return;
     }
 
-    FindOptions options = FindOption::None;
+    FindOptions options = FindOption::FindNone;
 
     if (m_caseSensitiveCheckBox->isChecked()) {
         options |= FindOption::CaseSensitive;

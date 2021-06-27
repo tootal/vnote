@@ -1,22 +1,18 @@
 #ifndef FILEOPENPARAMETERS_H
 #define FILEOPENPARAMETERS_H
 
+#include "global.h"
+
 namespace vnotex
 {
     class Node;
 
     struct FileOpenParameters
     {
-        // Some modes may be not supported by some editors.
-        enum Mode
-        {
-            Read,
-            Edit,
-            FullPreview,
-            FocusPreview
-        };
+        ViewWindowMode m_mode = ViewWindowMode::Read;
 
-        Mode m_mode = Mode::Read;
+        // Force to enter m_mode.
+        bool m_forceMode = false;
 
         // Whether focus to the opened window.
         bool m_focus = true;
@@ -29,6 +25,13 @@ namespace vnotex
 
         // Open as read-only.
         bool m_readOnly = false;
+
+        // If m_lineNumber > -1, it indicates the line to scroll to after opening the file.
+        // 0-based.
+        int m_lineNumber = -1;
+
+        // Whether always open a new window for file.
+        bool m_alwaysNewWindow = false;
     };
 }
 

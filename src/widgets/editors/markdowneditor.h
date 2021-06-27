@@ -49,6 +49,7 @@ namespace vnotex
 
         MarkdownEditor(const MarkdownEditorConfig &p_config,
                        const QSharedPointer<vte::MarkdownEditorConfig> &p_editorConfig,
+                       const QSharedPointer<vte::TextEditorParameters> &p_editorParas,
                        QWidget *p_parent = nullptr);
 
         virtual ~MarkdownEditor();
@@ -98,6 +99,8 @@ namespace vnotex
         void overrideSectionNumber(OverrideState p_state);
 
         void updateFromConfig(bool p_initialized = true);
+
+        QRgb getPreviewBackground() const;
 
     public slots:
         void handleHtmlToMarkdownData(quint64 p_id, TimeStamp p_timeStamp, const QString &p_text);

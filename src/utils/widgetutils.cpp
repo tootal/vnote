@@ -22,6 +22,9 @@
 #include <QMenu>
 #include <QDebug>
 #include <QLineEdit>
+#include <QLayout>
+
+#include <core/global.h>
 
 using namespace vnotex;
 
@@ -172,6 +175,10 @@ void WidgetUtils::addActionShortcut(QAction *p_action,
 void WidgetUtils::addActionShortcutText(QAction *p_action,
                                         const QString &p_shortcut)
 {
+    if (p_shortcut.isEmpty()) {
+        return;
+    }
+
     QKeySequence kseq(p_shortcut);
     if (kseq.isEmpty()) {
         return;
@@ -360,4 +367,9 @@ void WidgetUtils::selectBaseName(QLineEdit *p_lineEdit)
     auto text = p_lineEdit->text();
     int dotIndex = text.lastIndexOf(QLatin1Char('.'));
     p_lineEdit->setSelection(0, (dotIndex == -1) ? text.size() : dotIndex);
+}
+
+void WidgetUtils::setContentsMargins(QLayout *p_layout)
+{
+    p_layout->setContentsMargins(CONTENTS_MARGIN, CONTENTS_MARGIN, CONTENTS_MARGIN, CONTENTS_MARGIN);
 }

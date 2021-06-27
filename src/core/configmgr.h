@@ -6,6 +6,8 @@
 #include <QJsonObject>
 #include <QScopedPointer>
 
+#include "noncopyable.h"
+
 namespace vnotex
 {
     class MainConfig;
@@ -14,7 +16,7 @@ namespace vnotex
     class EditorConfig;
     class WidgetConfig;
 
-    class ConfigMgr : public QObject
+    class ConfigMgr : public QObject, private Noncopyable
     {
         Q_OBJECT
     public:
@@ -54,9 +56,6 @@ namespace vnotex
 
         ~ConfigMgr();
 
-        ConfigMgr(const ConfigMgr &) = delete;
-        void operator=(const ConfigMgr &) = delete;
-
         MainConfig &getConfig();
 
         SessionConfig &getSessionConfig();
@@ -93,6 +92,11 @@ namespace vnotex
 
         QString getUserSyntaxHighlightingFolder() const;
 
+        QString getAppDictsFolder() const;
+        QString getUserDictsFolder() const;
+
+        QString getUserTemplateFolder() const;
+
         // If @p_filePath is absolute, just return it.
         // Otherwise, first try to find it in user folder, then in app folder.
         QString getUserOrAppFile(const QString &p_filePath) const;
@@ -107,6 +111,8 @@ namespace vnotex
         static QString getApplicationDirPath();
 
         static QString getDocumentOrHomePath();
+
+        static QString getApplicationVersion();
 
         static const QString c_orgName;
 
@@ -132,6 +138,8 @@ namespace vnotex
         // Check if app config exists and is updated.
         // Update it if in need.
         void checkAppConfig();
+
+        static QString getDefaultConfigFilePath();
 
         QScopedPointer<MainConfig> m_config;;
 

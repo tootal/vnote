@@ -3,23 +3,26 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QStackedLayout>
+#include <QScrollArea>
 
 #include <widgets/treewidget.h>
 #include <widgets/lineedit.h>
 #include <widgets/widgetsfactory.h>
 
 #include "generalpage.h"
+#include "miscpage.h"
 #include "editorpage.h"
 #include "texteditorpage.h"
 #include "markdowneditorpage.h"
 #include "appearancepage.h"
+#include "quickaccesspage.h"
 #include "themepage.h"
 #include "taskpage.h"
 
 using namespace vnotex;
 
 SettingsDialog::SettingsDialog(QWidget *p_parent)
-    : ScrollDialog(p_parent)
+    : Dialog(p_parent)
 {
     setupUI();
 
@@ -35,8 +38,16 @@ void SettingsDialog::setupUI()
 
     setupPageExplorer(mainLayout, widget);
 
-    m_pageLayout = new QStackedLayout();
-    mainLayout->addLayout(m_pageLayout, 5);
+    {
+        auto scrollArea = new QScrollArea(widget);
+        scrollArea->setWidgetResizable(true);
+        mainLayout->addWidget(scrollArea, 5);
+
+        auto scrollWidget = new QWidget(scrollArea);
+        scrollArea->setWidget(scrollWidget);
+
+        m_pageLayout = new QStackedLayout(scrollWidget);
+    }
 
     setDialogButtonBox(QDialogButtonBox::Ok
                        | QDialogButtonBox::Apply
@@ -90,6 +101,12 @@ void SettingsDialog::setupPages()
         }
     }
 
+    // Quick Access.
+    {
+        auto page = new QuickAccessPage(this);
+        addPage(page);
+    }
+
     // Editor.
     {
         auto page = new EditorPage(this);
@@ -114,8 +131,18 @@ void SettingsDialog::setupPages()
         addPage(page);
     }
     
+
+    // Misc.
+    {
+        /*
+        auto page = new MiscPage(this);
+        addPage(page);
+        */
+    }
+
     setChangesUnsaved(false);
     m_pageExplorer->setCurrentItem(m_pageExplorer->topLevelItem(0), 0, QItemSelectionModel::ClearAndSelect);
+    m_pageExplorer->expandAll();
     m_pageLayout->setCurrentIndex(0);
 
     m_ready = true;

@@ -9,6 +9,7 @@
 #include <QToolButton>
 #include <QFormLayout>
 #include <QPlainTextEdit>
+#include <QRadioButton>
 
 #include "lineedit.h"
 #include "combobox.h"
@@ -52,6 +53,11 @@ QCheckBox *WidgetsFactory::createCheckBox(const QString &p_text, QWidget *p_pare
     return new QCheckBox(p_text, p_parent);
 }
 
+QRadioButton *WidgetsFactory::createRadioButton(const QString &p_text, QWidget *p_parent)
+{
+    return new QRadioButton(p_text, p_parent);
+}
+
 QSpinBox *WidgetsFactory::createSpinBox(QWidget *p_parent)
 {
     return new QSpinBox(p_parent);
@@ -87,5 +93,11 @@ QPlainTextEdit *WidgetsFactory::createPlainTextConsole(QWidget *p_parent)
     edit->setProperty("ConsoleTextEdit", true);
     edit->setReadOnly(true);
     edit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    return edit;
+}
+
+QPlainTextEdit *WidgetsFactory::createPlainTextEdit(QWidget *p_parent)
+{
+    auto edit = new QPlainTextEdit(p_parent);
     return edit;
 }

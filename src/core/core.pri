@@ -25,8 +25,10 @@ SOURCES += \
     $$PWD/logger.cpp \
     $$PWD/mainconfig.cpp \
     $$PWD/markdowneditorconfig.cpp \
+    $$PWD/quickaccesshelper.cpp \
     $$PWD/singleinstanceguard.cpp \
     $$PWD/taskvariablemgr.cpp \
+    $$PWD/templatemgr.cpp \
     $$PWD/texteditorconfig.cpp \
     $$PWD/vnotex.cpp \
     $$PWD/thememgr.cpp \
@@ -51,12 +53,16 @@ HEADERS += \
     $$PWD/filelocator.h \
     $$PWD/fileopenparameters.h \
     $$PWD/htmltemplatehelper.h \
+    $$PWD/location.h \
     $$PWD/logger.h \
     $$PWD/mainconfig.h \
     $$PWD/markdowneditorconfig.h \
+    $$PWD/noncopyable.h \
+    $$PWD/quickaccesshelper.h \
     $$PWD/singleinstanceguard.h \
     $$PWD/iconfig.h \
     $$PWD/taskvariablemgr.h \
+    $$PWD/templatemgr.h \
     $$PWD/texteditorconfig.h \
     $$PWD/vnotex.h \
     $$PWD/thememgr.h \

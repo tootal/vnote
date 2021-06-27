@@ -14,13 +14,14 @@
 #include <core/vnotex.h>
 #include <core/thememgr.h>
 #include "editors/statuswidget.h"
+#include <core/fileopenparameters.h>
 
 using namespace vnotex;
 
 TextViewWindow::TextViewWindow(QWidget *p_parent)
     : ViewWindow(p_parent)
 {
-    m_mode = Mode::Edit;
+    m_mode = ViewWindowMode::Edit;
     setupUI();
 }
 
@@ -34,8 +35,9 @@ void TextViewWindow::setupUI()
 
     // Central widget.
     {
-        auto config = createTextEditorConfig(textEditorConfig);
-        m_editor = new TextEditor(config, this);
+        m_editor = new TextEditor(createTextEditorConfig(textEditorConfig),
+                                  createTextEditorParameters(editorConfig, textEditorConfig),
+                                  this);
         setCentralWidget(m_editor);
 
         updateEditorFromConfig();
@@ -72,9 +74,12 @@ void TextViewWindow::setupToolBar()
     addAction(toolBar, ViewWindowToolBarHelper::FindAndReplace);
 }
 
-void TextViewWindow::handleBufferChangedInternal()
+void TextViewWindow::handleBufferChangedInternal(const QSharedPointer<FileOpenParameters> &p_paras)
 {
+    Q_UNUSED(p_paras);
     TextViewWindowHelper::handleBufferChanged(this);
+
+    handleFileOpenParameters(p_paras);
 }
 
 void TextViewWindow::syncEditorFromBuffer()
@@ -147,7 +152,7 @@ void TextViewWindow::setBufferRevisionAfterInvalidation(int p_bufferRevision)
     m_bufferRevision = p_bufferRevision;
 }
 
-void TextViewWindow::setMode(Mode p_mode)
+void TextViewWindow::setMode(ViewWindowMode p_mode)
 {
     Q_UNUSED(p_mode);
     Q_ASSERT(false);
@@ -160,6 +165,15 @@ QSharedPointer<vte::TextEditorConfig> TextViewWindow::createTextEditorConfig(con
                                                                themeMgr.getFile(Theme::File::TextEditorStyle),
                                                                themeMgr.getEditorHighlightTheme());
     return config;
+}
+
+QSharedPointer<vte::TextEditorParameters> TextViewWindow::createTextEditorParameters(const EditorConfig& p_editorConfig, const TextEditorConfig &p_config)
+{
+    auto paras = QSharedPointer<vte::TextEditorParameters>::create();
+    paras->m_spellCheckEnabled = p_config.isSpellCheckEnabled();
+    paras->m_autoDetectLanguageEnabled = p_editorConfig.isSpellCheckAutoDetectLanguageEnabled();
+    paras->m_defaultSpellCheckLanguage = p_editorConfig.getSpellCheckDefaultDictionary();
+    return paras;
 }
 
 void TextViewWindow::scrollUp()
@@ -218,4 +232,29 @@ void TextViewWindow::updateEditorFromConfig()
     if (textEditorConfig.getZoomDelta() != 0) {
         m_editor->zoom(textEditorConfig.getZoomDelta());
     }
+}
+
+void TextViewWindow::openTwice(const QSharedPointer<FileOpenParameters> &p_paras)
+{
+    handleFileOpenParameters(p_paras);
+}
+
+void TextViewWindow::handleFileOpenParameters(const QSharedPointer<FileOpenParameters> &p_paras)
+{
+    if (!p_paras) {
+        return;
+    }
+
+    if (p_paras->m_lineNumber > -1) {
+        m_editor->scrollToLine(p_paras->m_lineNumber, true);
+    }
+}
+
+ViewWindowSession TextViewWindow::saveSession() const
+{
+    auto session = ViewWindow::saveSession();
+    if (getBuffer()) {
+        session.m_lineNumber = m_editor->getCursorPosition().first;
+    }
+    return session;
 }

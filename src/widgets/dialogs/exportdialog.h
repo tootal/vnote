@@ -22,6 +22,7 @@ namespace vnotex
     class Node;
     class Buffer;
     class Exporter;
+    class LocationInputWithBrowseButton;
 
     class ExportDialog : public ScrollDialog
     {
@@ -30,6 +31,7 @@ namespace vnotex
         // Current notebook/folder/buffer.
         ExportDialog(Notebook *p_notebook,
                      Node *p_folder,
+                     Node *p_note,
                      Buffer *p_buffer,
                      QWidget *p_parent = nullptr);
 
@@ -104,6 +106,8 @@ namespace vnotex
 
         Node *m_folder = nullptr;
 
+        Node *m_note = nullptr;
+
         Buffer *m_buffer = nullptr;
 
         // Last exported single file.
@@ -127,7 +131,7 @@ namespace vnotex
 
         QComboBox *m_syntaxHighlightStyleComboBox = nullptr;
 
-        QLineEdit *m_outputDirLineEdit = nullptr;
+        LocationInputWithBrowseButton *m_outputDirInput = nullptr;
 
         QProgressBar *m_progressBar = nullptr;
 

@@ -10,6 +10,8 @@
 #include <QDropEvent>
 #include <QTimer>
 #include <QApplication>
+#include <QSet>
+#include <QHash>
 
 #include "viewwindow.h"
 #include "mainwindow.h"
@@ -20,9 +22,14 @@
 #include <core/vnotex.h>
 #include <core/configmgr.h>
 #include <core/coreconfig.h>
+#include <core/editorconfig.h>
+#include <core/markdowneditorconfig.h>
+#include <core/sessionconfig.h>
 #include <core/fileopenparameters.h>
 #include <notebook/node.h>
 #include <notebook/notebook.h>
+#include "editors/plantumlhelper.h"
+#include "editors/graphvizhelper.h"
 
 using namespace vnotex;
 
@@ -46,7 +53,9 @@ ViewArea::ViewArea(QWidget *p_parent)
                     return;
                 }
 
-                // TODO: save last opened files.
+                if (ConfigMgr::getInst().getCoreConfig().isRecoverLastSessionOnStartEnabled()) {
+                    saveSession();
+                }
 
                 bool ret = close(false);
                 if (!ret) {
@@ -60,38 +69,20 @@ ViewArea::ViewArea(QWidget *p_parent)
                 close(true);
             });
 
-    connect(&VNoteX::getInst(), &VNoteX::nodeAboutToMove,
-            this, [this](Node *p_node, const QSharedPointer<Event> &p_event) {
-                if (p_event->m_handled) {
-                    return;
-                }
+    connect(mainWindow, &MainWindow::mainWindowStarted,
+            this, &ViewArea::loadSession);
 
-                bool ret = close(p_node, false);
-                p_event->m_response = ret;
-                p_event->m_handled = !ret;
-            });
+    connect(&VNoteX::getInst(), &VNoteX::nodeAboutToMove,
+            this, &ViewArea::handleNodeChange);
 
     connect(&VNoteX::getInst(), &VNoteX::nodeAboutToRemove,
-            this, [this](Node *p_node, const QSharedPointer<Event> &p_event) {
-                if (p_event->m_handled) {
-                    return;
-                }
-
-                bool ret = close(p_node, false);
-                p_event->m_response = ret;
-                p_event->m_handled = !ret;
-            });
+            this, &ViewArea::handleNodeChange);
 
     connect(&VNoteX::getInst(), &VNoteX::nodeAboutToRename,
-            this, [this](Node *p_node, const QSharedPointer<Event> &p_event) {
-                if (p_event->m_handled) {
-                    return;
-                }
+            this, &ViewArea::handleNodeChange);
 
-                bool ret = close(p_node, false);
-                p_event->m_response = ret;
-                p_event->m_handled = !ret;
-            });
+    connect(&VNoteX::getInst(), &VNoteX::nodeAboutToReload,
+            this, &ViewArea::handleNodeChange);
 
     auto &configMgr = ConfigMgr::getInst();
     connect(&configMgr, &ConfigMgr::editorConfigChanged,
@@ -100,6 +91,12 @@ ViewArea::ViewArea(QWidget *p_parent)
                     p_win->handleEditorConfigChange();
                     return true;
                 });
+
+                const auto &markdownEditorConfig = ConfigMgr::getInst().getEditorConfig().getMarkdownEditorConfig();
+                PlantUmlHelper::getInst().update(markdownEditorConfig.getPlantUmlJar(),
+                                                 markdownEditorConfig.getGraphvizExe(),
+                                                 markdownEditorConfig.getPlantUmlCommand());
+                GraphvizHelper::getInst().update(markdownEditorConfig.getGraphvizExe());
             });
 
     m_fileCheckTimer = new QTimer(this);
@@ -130,14 +127,23 @@ ViewArea::~ViewArea()
     Q_ASSERT(m_workspaces.isEmpty());
 }
 
+void ViewArea::handleNodeChange(Node *p_node, const QSharedPointer<Event> &p_event)
+{
+    if (p_event->m_handled) {
+        return;
+    }
+
+    bool ret = close(p_node, false);
+    p_event->m_response = ret;
+    p_event->m_handled = !ret;
+}
+
 void ViewArea::setupUI()
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     m_mainLayout = new QVBoxLayout(this);
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
-
-    showSceneWidget();
 }
 
 QSize ViewArea::sizeHint() const
@@ -154,7 +160,10 @@ QSize ViewArea::sizeHint() const
 void ViewArea::openBuffer(Buffer *p_buffer, const QSharedPointer<FileOpenParameters> &p_paras)
 {
     // We allow multiple ViewWindows of the same buffer in different workspaces by default.
-    auto wins = findBufferInViewSplits(p_buffer);
+    QVector<ViewWindow *> wins;
+    if (!p_paras->m_alwaysNewWindow) {
+        wins = findBufferInViewSplits(p_buffer);
+    }
     if (wins.isEmpty()) {
         if (!m_currentSplit) {
             addFirstViewSplit();
@@ -175,6 +184,8 @@ void ViewArea::openBuffer(Buffer *p_buffer, const QSharedPointer<FileOpenParamet
                 break;
             }
         }
+
+        selectedWin->openTwice(p_paras);
 
         setCurrentViewWindow(selectedWin);
     }
@@ -200,12 +211,20 @@ QVector<ViewWindow *> ViewArea::findBufferInViewSplits(const Buffer *p_buffer) c
     return wins;
 }
 
-ViewSplit *ViewArea::createViewSplit(QWidget *p_parent)
+ViewSplit *ViewArea::createViewSplit(QWidget *p_parent, ID p_viewSplitId)
 {
     auto workspace = createWorkspace();
     m_workspaces.push_back(workspace);
 
-    auto split = new ViewSplit(m_workspaces, workspace, p_parent);
+    ID id = p_viewSplitId;
+    if (id == InvalidViewSplitId) {
+        id = m_nextViewSplitId++;
+    } else {
+        Q_ASSERT(p_viewSplitId >= m_nextViewSplitId);
+        m_nextViewSplitId = id + 1;
+    }
+
+    auto split = new ViewSplit(m_workspaces, workspace, id, p_parent);
     connect(split, &ViewSplit::viewWindowCloseRequested,
             this, [this](ViewWindow *p_win) {
                 closeViewWindow(p_win, false, true);
@@ -289,7 +308,13 @@ void ViewArea::addFirstViewSplit()
     hideSceneWidget();
     m_mainLayout->addWidget(split);
 
-    setCurrentViewSplit(split, false);
+    postFirstViewSplit();
+}
+
+void ViewArea::postFirstViewSplit()
+{
+    Q_ASSERT(!m_splits.isEmpty());
+    setCurrentViewSplit(m_splits.first(), false);
 
     emit viewSplitsCountChanged();
     checkCurrentViewWindowChange();
@@ -453,7 +478,7 @@ QSharedPointer<ViewWorkspace> ViewArea::createWorkspace()
     ID id = 1;
     QSet<ID> usedIds;
     for (auto ws : m_workspaces) {
-        usedIds.insert(ws->c_id);
+        usedIds.insert(ws->m_id);
     }
 
     while (true) {
@@ -665,9 +690,7 @@ bool ViewArea::removeWorkspaceInViewSplit(ViewSplit *p_split, bool p_insertNew)
 {
     // Close all the ViewWindows.
     setCurrentViewSplit(p_split, true);
-    auto wins = getAllViewWindows(p_split, [](ViewWindow *) {
-                return true;
-            });
+    auto wins = getAllViewWindows(p_split);
     for (const auto win : wins) {
         if (!closeViewWindow(win, false, false)) {
             return false;
@@ -786,6 +809,22 @@ void ViewArea::setupShortcuts()
                             if (node) {
                                 emit VNoteX::getInst().locateNodeRequested(node);
                             }
+                        }
+                    });
+        }
+    }
+
+    // FocusContentArea.
+    {
+        auto shortcut = WidgetUtils::createShortcut(coreConfig.getShortcut(CoreConfig::FocusContentArea), this);
+        if (shortcut) {
+            connect(shortcut, &QShortcut::activated,
+                    this, [this]() {
+                        auto win = getCurrentViewWindow();
+                        if (win) {
+                            win->setFocus();
+                        } else {
+                            setFocus();
                         }
                     });
         }
@@ -973,7 +1012,7 @@ void ViewArea::dropEvent(QDropEvent *p_event)
     QWidget::dropEvent(p_event);
 }
 
-QVector<ViewWindow *> ViewArea::getAllViewWindows(ViewSplit *p_split, const ViewSplit::ViewWindowSelector &p_func)
+QVector<ViewWindow *> ViewArea::getAllViewWindows(ViewSplit *p_split, const ViewSplit::ViewWindowSelector &p_func) const
 {
     QVector<ViewWindow *> wins;
     p_split->forEachViewWindow([p_func, &wins](ViewWindow *p_win) {
@@ -983,4 +1022,213 @@ QVector<ViewWindow *> ViewArea::getAllViewWindows(ViewSplit *p_split, const View
             return true;
         });
     return wins;
+}
+
+QVector<ViewWindow *> ViewArea::getAllViewWindows(ViewSplit *p_split) const
+{
+   return getAllViewWindows(p_split, [](ViewWindow *) {
+              return true;
+          });
+}
+
+QList<Buffer *> ViewArea::getAllBuffersInViewSplits() const
+{
+    QSet<Buffer *> bufferSet;
+
+    for (auto split : m_splits) {
+        auto wins = getAllViewWindows(split);
+        for (auto win : wins) {
+            bufferSet.insert(win->getBuffer());
+        }
+    }
+
+    return bufferSet.values();
+}
+
+void ViewArea::loadSession()
+{
+    auto &sessionConfig = ConfigMgr::getInst().getSessionConfig();
+    // Clear it if recover is disabled.
+    auto sessionData = sessionConfig.getViewAreaSessionAndClear();
+
+    if (!ConfigMgr::getInst().getCoreConfig().isRecoverLastSessionOnStartEnabled()) {
+        showSceneWidget();
+        return;
+    }
+
+    auto session = ViewAreaSession::deserialize(sessionData);
+
+    // Load widgets layout.
+    if (session.m_root.isEmpty()) {
+        showSceneWidget();
+    } else {
+        Q_ASSERT(m_splits.isEmpty());
+        if (session.m_root.m_type == ViewAreaSession::Node::Type::Splitter) {
+            // Splitter.
+            auto splitter = createSplitter(session.m_root.m_orientation, this);
+            m_mainLayout->addWidget(splitter);
+
+            loadSplitterFromSession(session.m_root, splitter);
+        } else {
+            // Just only one ViewSplit.
+            Q_ASSERT(session.m_root.m_type == ViewAreaSession::Node::Type::ViewSplit);
+            auto split = createViewSplit(this, session.m_root.m_viewSplitId);
+            m_splits.push_back(split);
+            m_mainLayout->addWidget(split);
+        }
+
+        QHash<ID, int> viewSplitToWorkspace;
+
+        setCurrentViewSplit(m_splits.first(), false);
+
+        // Load invisible workspace.
+        for (int i = 0; i < session.m_workspaces.size(); ++i) {
+            const auto &ws = session.m_workspaces[i];
+            if (ws.m_viewSplitId != InvalidViewSplitId) {
+                viewSplitToWorkspace.insert(ws.m_viewSplitId, i);
+                continue;
+            }
+
+            for (const auto &winSession : ws.m_viewWindows) {
+                openViewWindowFromSession(winSession);
+            }
+
+            // Check if there is any window.
+            if (m_currentSplit->getViewWindowCount() > 0) {
+                m_currentSplit->setCurrentViewWindow(ws.m_currentViewWindowIndex);
+
+                // New another workspace.
+                auto newWs = createWorkspace();
+                m_workspaces.push_back(newWs);
+                m_currentSplit->setWorkspace(newWs);
+            }
+        }
+
+        // Load visible workspace.
+        for (auto split : m_splits) {
+            setCurrentViewSplit(split, false);
+
+            auto it = viewSplitToWorkspace.find(split->getId());
+            Q_ASSERT(it != viewSplitToWorkspace.end());
+
+            const auto &ws = session.m_workspaces[it.value()];
+
+            for (const auto &winSession : ws.m_viewWindows) {
+                openViewWindowFromSession(winSession);
+            }
+
+            if (m_currentSplit->getViewWindowCount() > 0) {
+                m_currentSplit->setCurrentViewWindow(ws.m_currentViewWindowIndex);
+            }
+        }
+
+        postFirstViewSplit();
+
+        distributeViewSplits();
+    }
+}
+
+void ViewArea::saveSession() const
+{
+    ViewAreaSession session;
+    takeSnapshot(session);
+
+    auto &sessionConfig = ConfigMgr::getInst().getSessionConfig();
+    sessionConfig.setViewAreaSession(session.serialize());
+}
+
+static void takeSnapshotOfWidgetNodes(ViewAreaSession::Node &p_node, const QWidget *p_widget, QHash<ID, ID> &p_workspaceToViewSplit)
+{
+    p_node.clear();
+
+    // Splitter.
+    auto splitter = dynamic_cast<const QSplitter *>(p_widget);
+    if (splitter) {
+        p_node.m_type = ViewAreaSession::Node::Type::Splitter;
+        p_node.m_orientation = splitter->orientation();
+        p_node.m_children.resize(splitter->count());
+
+        for (int i = 0; i < p_node.m_children.size(); ++i) {
+            takeSnapshotOfWidgetNodes(p_node.m_children[i], splitter->widget(i), p_workspaceToViewSplit);
+        }
+
+        return;
+    }
+
+    // ViewSplit.
+    auto viewSplit = dynamic_cast<const ViewSplit *>(p_widget);
+    Q_ASSERT(viewSplit);
+    p_node.m_type = ViewAreaSession::Node::Type::ViewSplit;
+    p_node.m_viewSplitId = viewSplit->getId();
+
+    auto ws = viewSplit->getWorkspace();
+    if (ws) {
+        viewSplit->updateStateToWorkspace();
+        p_workspaceToViewSplit.insert(ws->m_id, viewSplit->getId());
+    }
+}
+
+
+void ViewArea::takeSnapshot(ViewAreaSession &p_session) const
+{
+    QHash<ID, ID> workspaceToViewSplit;
+
+    // Widget hirarchy.
+    p_session.m_root.clear();
+    if (!m_splits.isEmpty()) {
+        auto topWidget = m_mainLayout->itemAt(0)->widget();
+        takeSnapshotOfWidgetNodes(p_session.m_root, topWidget, workspaceToViewSplit);
+    }
+
+    // Workspaces.
+    p_session.m_workspaces.clear();
+    p_session.m_workspaces.reserve(m_workspaces.size());
+    for (const auto &ws : m_workspaces) {
+        p_session.m_workspaces.push_back(ViewAreaSession::Workspace());
+        auto &wsSnap = p_session.m_workspaces.last();
+        if (ws->m_visible) {
+            auto it = workspaceToViewSplit.find(ws->m_id);
+            Q_ASSERT(it != workspaceToViewSplit.end());
+            wsSnap.m_viewSplitId = it.value();
+        }
+        wsSnap.m_currentViewWindowIndex = ws->m_currentViewWindowIndex;
+        for (auto win : ws->m_viewWindows) {
+            wsSnap.m_viewWindows.push_back(win->saveSession());
+        }
+    }
+}
+
+void ViewArea::loadSplitterFromSession(const ViewAreaSession::Node &p_node, QSplitter *p_splitter)
+{
+    // @p_splitter is the splitter corresponding to @p_node.
+    Q_ASSERT(p_node.m_type == ViewAreaSession::Node::Type::Splitter);
+
+    for (const auto &child : p_node.m_children) {
+        if (child.m_type == ViewAreaSession::Node::Type::Splitter) {
+            auto childSplitter = createSplitter(child.m_orientation, p_splitter);
+            p_splitter->addWidget(childSplitter);
+
+            loadSplitterFromSession(child, childSplitter);
+        } else {
+            Q_ASSERT(child.m_type == ViewAreaSession::Node::Type::ViewSplit);
+            auto childSplit = createViewSplit(this, child.m_viewSplitId);
+            m_splits.push_back(childSplit);
+            p_splitter->addWidget(childSplit);
+        }
+    }
+}
+
+void ViewArea::openViewWindowFromSession(const ViewWindowSession &p_session)
+{
+    if (p_session.m_bufferPath.isEmpty()) {
+        return;
+    }
+
+    auto paras = QSharedPointer<FileOpenParameters>::create();
+    paras->m_mode = p_session.m_viewWindowMode;
+    paras->m_readOnly = p_session.m_readOnly;
+    paras->m_lineNumber = p_session.m_lineNumber;
+    paras->m_alwaysNewWindow = true;
+
+    emit VNoteX::getInst().openFileRequested(p_session.m_bufferPath, paras);
 }
