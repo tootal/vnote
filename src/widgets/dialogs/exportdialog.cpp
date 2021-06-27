@@ -32,16 +32,19 @@
 #include <utils/pathutils.h>
 #include <utils/clipboardutils.h>
 #include <export/exporter.h>
+#include <widgets/locationinputwithbrowsebutton.h>
 
 using namespace vnotex;
 
 ExportDialog::ExportDialog(Notebook *p_notebook,
                            Node *p_folder,
+                           Node *p_note,
                            Buffer *p_buffer,
                            QWidget *p_parent)
     : ScrollDialog(p_parent),
       m_notebook(p_notebook),
       m_folder(p_folder),
+      m_note(p_note),
       m_buffer(p_buffer)
 {
     setupUI();
@@ -93,6 +96,10 @@ QGroupBox *ExportDialog::setupSourceGroup(QWidget *p_parent)
         if (m_buffer) {
             m_sourceComboBox->addItem(tr("Current Buffer (%1)").arg(m_buffer->getName()),
                                       static_cast<int>(ExportSource::CurrentBuffer));
+        }
+        if (m_note && m_note->hasContent()) {
+            m_sourceComboBox->addItem(tr("Current Note (%1)").arg(m_note->getName()),
+                                      static_cast<int>(ExportSource::CurrentNote));
         }
         if (m_folder && m_folder->isContainer()) {
             m_sourceComboBox->addItem(tr("Current Folder (%1)").arg(m_folder->getName()),
@@ -175,14 +182,9 @@ QGroupBox *ExportDialog::setupTargetGroup(QWidget *p_parent)
     }
 
     {
-        auto outputLayout = new QHBoxLayout();
-
-        m_outputDirLineEdit = WidgetsFactory::createLineEdit(box);
-        outputLayout->addWidget(m_outputDirLineEdit);
-
-        auto browseBtn = new QPushButton(tr("Browse"), box);
-        outputLayout->addWidget(browseBtn);
-        connect(browseBtn, &QPushButton::clicked,
+        m_outputDirInput = new LocationInputWithBrowseButton(box);
+        layout->addRow(tr("Output directory:"), m_outputDirInput);
+        connect(m_outputDirInput, &LocationInputWithBrowseButton::clicked,
                 this, [this]() {
                     QString initPath = getOutputDir();
                     if (!QFileInfo::exists(initPath)) {
@@ -196,11 +198,9 @@ QGroupBox *ExportDialog::setupTargetGroup(QWidget *p_parent)
                                                                         | QFileDialog::DontResolveSymlinks);
 
                     if (!dirPath.isEmpty()) {
-                        m_outputDirLineEdit->setText(dirPath);
+                        m_outputDirInput->setText(dirPath);
                     }
                 });
-
-        layout->addRow(tr("Output directory:"), outputLayout);
     }
 
     return box;
@@ -275,7 +275,7 @@ void ExportDialog::setupButtonBox()
 
 QString ExportDialog::getOutputDir() const
 {
-    return m_outputDirLineEdit->text();
+    return m_outputDirInput->text();
 }
 
 void ExportDialog::initOptions()
@@ -324,7 +324,7 @@ void ExportDialog::restoreFields(const ExportOption &p_option)
         }
     }
 
-    m_outputDirLineEdit->setText(p_option.m_outputDir);
+    m_outputDirInput->setText(p_option.m_outputDir);
 
     m_recursiveCheckBox->setChecked(p_option.m_recursive);
 
@@ -381,8 +381,8 @@ void ExportDialog::rejectedButtonClicked()
 {
     if (m_exportOngoing) {
         // Just cancel the export.
-        appendLog(tr("Cancelling the export."));
-        m_exporter->stop();
+        appendLog(tr("Cancelling the export"));
+        getExporter()->stop();
     } else {
         Dialog::rejectedButtonClicked();
     }
@@ -431,10 +431,21 @@ int ExportDialog::doExport(ExportOption p_option)
         break;
     }
 
+    case ExportSource::CurrentNote:
+    {
+        Q_ASSERT(m_note);
+        const auto outputFile = getExporter()->doExport(p_option, m_note);
+        exportedFilesCount = outputFile.isEmpty() ? 0 : 1;
+        if (exportedFilesCount == 1 && p_option.m_targetFormat == ExportFormat::HTML) {
+            m_exportedFile = outputFile;
+        }
+        break;
+    }
+
     case ExportSource::CurrentFolder:
     {
         Q_ASSERT(m_folder);
-        const auto outputFiles = getExporter()->doExport(p_option, m_folder);
+        const auto outputFiles = getExporter()->doExportFolder(p_option, m_folder);
         exportedFilesCount = outputFiles.size();
         break;
     }
@@ -601,7 +612,7 @@ QWidget *ExportDialog::getPdfAdvancedSettings()
         }
 
         {
-            m_addTableOfContentsCheckBox = WidgetsFactory::createCheckBox(tr("Add Table-Of-Contents"), widget);
+            m_addTableOfContentsCheckBox = WidgetsFactory::createCheckBox(tr("Add Table-of-Contents"), widget);
             layout->addRow(m_addTableOfContentsCheckBox);
         }
 

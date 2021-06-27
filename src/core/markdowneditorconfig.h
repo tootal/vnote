@@ -48,8 +48,18 @@ namespace vnotex
         const WebResource &getExportResource() const;
 
         bool getWebPlantUml() const;
+        void setWebPlantUml(bool p_enabled);
+
+        const QString &getPlantUmlJar() const;
+        void setPlantUmlJar(const QString &p_jar);
+
+        const QString &getPlantUmlCommand() const;
 
         bool getWebGraphviz() const;
+        void setWebGraphviz(bool p_enabled);
+
+        const QString &getGraphvizExe() const;
+        void setGraphvizExe(const QString &p_exe);
 
         bool getPrependDotInRelativeLink() const;
 
@@ -99,6 +109,12 @@ namespace vnotex
 
         int getSmartTableInterval() const;
 
+        bool isSpellCheckEnabled() const;
+        void setSpellCheckEnabled(bool p_enabled);
+
+        const QString &getEditorOverriddenFontFamily() const;
+        void setEditorOverriddenFontFamily(const QString &p_family);
+
     private:
         QString sectionNumberModeToString(SectionNumberMode p_mode) const;
         SectionNumberMode stringToSectionNumberMode(const QString &p_str) const;
@@ -121,7 +137,17 @@ namespace vnotex
         // Whether use javascript or external program to render PlantUML.
         bool m_webPlantUml = true;
 
+        // File path of the JAR to render PlantUmL.
+        QString m_plantUmlJar;
+
+        // Command to render PlantUml. If set, will ignore m_plantUmlJar.
+        // %1: the format to render in.
+        QString m_plantUmlCommand;
+
         bool m_webGraphviz = true;
+
+        // Graphviz executable file.
+        QString m_graphvizExe;
 
         // Whether prepend a dot in front of the relative link, like images.
         bool m_prependDotInRelativeLink = false;
@@ -171,6 +197,12 @@ namespace vnotex
 
         // Interval time to do smart table format.
         int m_smartTableInterval = 2000;
+
+        // Override the config in TextEditorConfig.
+        bool m_spellCheckEnabled = true;
+
+        // Font family to override the editor's theme.
+        QString m_editorOverriddenFontFamily;
     };
 }
 

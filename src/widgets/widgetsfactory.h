@@ -12,6 +12,7 @@ class QToolButton;
 class QDoubleSpinBox;
 class QFormLayout;
 class QPlainTextEdit;
+class QRadioButton;
 
 namespace vnotex
 {
@@ -32,6 +33,8 @@ namespace vnotex
 
         static QCheckBox *createCheckBox(const QString &p_text, QWidget *p_parent = nullptr);
 
+        static QRadioButton *createRadioButton(const QString &p_text, QWidget *p_parent = nullptr);
+
         static QSpinBox *createSpinBox(QWidget *p_parent = nullptr);
 
         static QDoubleSpinBox *createDoubleSpinBox(QWidget *p_parent = nullptr);
@@ -41,6 +44,8 @@ namespace vnotex
         static QFormLayout *createFormLayout(QWidget *p_parent = nullptr);
 
         static QPlainTextEdit *createPlainTextConsole(QWidget *p_parent = nullptr);
+
+        static QPlainTextEdit *createPlainTextEdit(QWidget *p_parent = nullptr);
     };
 } // ns vnotex
 

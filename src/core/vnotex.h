@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QScopedPointer>
 
+#include "noncopyable.h"
 #include "thememgr.h"
 #include "taskmgr.h"
 #include "global.h"
@@ -17,8 +18,9 @@ namespace vnotex
     struct FileOpenParameters;
     class Event;
     class Notebook;
+    struct ComplexLocation;
 
-    class VNoteX : public QObject
+    class VNoteX : public QObject, private Noncopyable
     {
         Q_OBJECT
     public:
@@ -27,9 +29,6 @@ namespace vnotex
             static VNoteX inst;
             return inst;
         }
-
-        VNoteX(const VNoteX &) = delete;
-        void operator=(const VNoteX &) = delete;
 
         // MUST be called to load some heavy data.
         // It is good to call it after MainWindow is shown.
@@ -49,9 +48,11 @@ namespace vnotex
         ID getInstanceId() const;
 
     public slots:
-        void showStatusMessage(const QString &p_message, int timeoutMilliseconds = 0);
+        void showStatusMessage(const QString &p_message, int p_timeoutMilliseconds = 0);
 
         void showStatusMessageShort(const QString &p_message);
+
+        void showTips(const QString &p_message, int p_timeoutMilliseconds = 3000);
 
     signals:
         // Requested to new a notebook.
@@ -80,10 +81,12 @@ namespace vnotex
         void newFolderRequested();
 
         // Requested to show status message.
-        void statusMessageRequested(const QString &p_message, int timeoutMilliseconds);
+        void statusMessageRequested(const QString &p_message, int p_timeoutMilliseconds);
         
         // Requested to show output message.
         void showOutputRequested(const QString &p_text);
+        
+        void tipsRequested(const QString &p_message, int p_timeoutMilliseconds);
 
         // Requested to open @p_node.
         void openNodeRequested(Node *p_node, const QSharedPointer<FileOpenParameters> &p_paras);
@@ -108,6 +111,8 @@ namespace vnotex
 
         void exportRequested();
 
+        void pinToQuickAccessRequested(const QStringList &p_files);
+
     private:
         explicit VNoteX(QObject *p_parent = nullptr);
 
@@ -120,6 +125,8 @@ namespace vnotex
         void initBufferMgr();
 
         void initDocsUtils();
+
+        void initQuickAccess();
 
         MainWindow *m_mainWindow;
 

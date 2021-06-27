@@ -10,6 +10,7 @@
 #include "global.h"
 #include "navigationmode.h"
 #include "viewsplit.h"
+#include "viewareasession.h"
 
 class QLayout;
 class QSplitter;
@@ -29,7 +30,7 @@ namespace vnotex
     struct ViewWorkspace
     {
         explicit ViewWorkspace(ID p_id)
-            : c_id(p_id)
+            : m_id(p_id)
         {
         }
 
@@ -45,7 +46,7 @@ namespace vnotex
             m_currentViewWindowIndex = 0;
         }
 
-        const ID c_id = 0;
+        const ID m_id = 0;
 
         // Whether it is displayed by a ViewSplit now.
         bool m_visible = false;
@@ -67,6 +68,9 @@ namespace vnotex
         ~ViewArea();
 
         QSize sizeHint() const Q_DECL_OVERRIDE;
+
+        // Not all Workspace. Just all ViewSplits.
+        QList<Buffer *> getAllBuffersInViewSplits() const;
 
     public slots:
         void openBuffer(Buffer *p_buffer, const QSharedPointer<FileOpenParameters> &p_paras);
@@ -127,6 +131,12 @@ namespace vnotex
 
         bool close(bool p_force);
 
+        void handleNodeChange(Node *p_node, const QSharedPointer<Event> &p_event);
+
+        void loadSession();
+
+        void saveSession() const;
+
     private:
         enum class SplitType
         {
@@ -140,7 +150,7 @@ namespace vnotex
         // Does not search invisible work spaces.
         QVector<ViewWindow *> findBufferInViewSplits(const Buffer *p_buffer) const;
 
-        ViewSplit *createViewSplit(QWidget *p_parent);
+        ViewSplit *createViewSplit(QWidget *p_parent, ID p_viewSplitId = InvalidViewSplitId);
 
         // A Scene widget will be used when there is no split.
         // Usually it is used to show some help message.
@@ -196,7 +206,17 @@ namespace vnotex
 
         void checkCurrentViewWindowChange();
 
-        QVector<ViewWindow *> getAllViewWindows(ViewSplit *p_split, const ViewSplit::ViewWindowSelector &p_func);
+        QVector<ViewWindow *> getAllViewWindows(ViewSplit *p_split, const ViewSplit::ViewWindowSelector &p_func) const;
+
+        QVector<ViewWindow *> getAllViewWindows(ViewSplit *p_split) const;
+
+        void takeSnapshot(ViewAreaSession &p_session) const;
+
+        void postFirstViewSplit();
+
+        void loadSplitterFromSession(const ViewAreaSession::Node &p_node, QSplitter *p_splitter);
+
+        void openViewWindowFromSession(const ViewWindowSession &p_session);
 
         QLayout *m_mainLayout = nullptr;
 
@@ -219,6 +239,8 @@ namespace vnotex
 
         // Timer to check file change outside periodically.
         QTimer *m_fileCheckTimer = nullptr;
+
+        ID m_nextViewSplitId = InvalidViewSplitId + 1;
     };
 } // ns vnotex
 

@@ -21,6 +21,7 @@
 #include <vtextedit/vtextedit.h>
 #include <vtextedit/texteditutils.h>
 #include <vtextedit/networkutils.h>
+#include <vtextedit/theme.h>
 
 #include <widgets/dialogs/linkinsertdialog.h>
 #include <widgets/dialogs/imageinsertdialog.h>
@@ -35,13 +36,14 @@
 #include <utils/pathutils.h>
 #include <utils/htmlutils.h>
 #include <utils/widgetutils.h>
-#include <utils/textutils.h>
 #include <utils/webutils.h>
+#include <utils/imageutils.h>
 #include <core/exception.h>
 #include <core/markdowneditorconfig.h>
 #include <core/texteditorconfig.h>
 #include <core/configmgr.h>
 #include <core/editorconfig.h>
+#include <core/vnotex.h>
 
 #include "previewhelper.h"
 #include "../outlineprovider.h"
@@ -65,8 +67,9 @@ MarkdownEditor::Heading::Heading(const QString &p_name,
 
 MarkdownEditor::MarkdownEditor(const MarkdownEditorConfig &p_config,
                                const QSharedPointer<vte::MarkdownEditorConfig> &p_editorConfig,
+                               const QSharedPointer<vte::TextEditorParameters> &p_editorParas,
                                QWidget *p_parent)
-    : vte::VMarkdownEditor(p_editorConfig, p_parent),
+    : vte::VMarkdownEditor(p_editorConfig, p_editorParas, p_parent),
       m_config(p_config)
 {
     setupShortcuts();
@@ -443,6 +446,9 @@ void MarkdownEditor::handleInsertFromMimeData(const QMimeData *p_source, bool *p
     QClipboard *clipboard = QApplication::clipboard();
     if (!clipboard->property(c_clipboardPropertyMark).toBool()) {
         // Default paste.
+        // Give tips about the Rich Paste and Parse As Markdown And Paste features.
+        VNoteX::getInst().showStatusMessageShort(
+            tr("For advanced paste, try the \"Rich Paste\" and \"Parse To Markdown And Paste\" on the editor's context menu"));
         return;
     } else {
         clipboard->setProperty(c_clipboardPropertyMark, false);
@@ -911,15 +917,10 @@ void MarkdownEditor::handleContextMenuEvent(QContextMenuEvent *p_event, bool *p_
     p_menu->reset(m_textEdit->createStandardContextMenu(p_event->pos()));
     auto menu = p_menu->data();
 
-    QAction *copyAct = nullptr;
-    QAction *pasteAct = nullptr;
-    QAction *firstAct = nullptr;
-    {
-        const auto actions = menu->actions();
-        firstAct = actions.isEmpty() ? nullptr : actions.first();
-        copyAct = WidgetUtils::findActionByObjectName(actions, "edit-copy");
-        pasteAct = WidgetUtils::findActionByObjectName(actions, "edit-paste");
-    }
+    const auto actions = menu->actions();
+    QAction *firstAct = actions.isEmpty() ? nullptr : actions.first();
+    // QAction *copyAct = WidgetUtils::findActionByObjectName(actions, "edit-copy");
+    QAction *pasteAct = WidgetUtils::findActionByObjectName(actions, "edit-paste");
 
     if (!m_textEdit->hasSelection()) {
         auto readAct = new QAction(tr("&Read"), menu);
@@ -953,6 +954,8 @@ void MarkdownEditor::handleContextMenuEvent(QContextMenuEvent *p_event, bool *p_
             WidgetUtils::insertActionAfter(menu, richPasteAct, parsePasteAct);
         }
     }
+
+    appendSpellCheckMenu(p_event, menu);
 }
 
 void MarkdownEditor::richPaste()
@@ -994,6 +997,7 @@ void MarkdownEditor::parseToMarkdownAndPaste()
 void MarkdownEditor::handleHtmlToMarkdownData(quint64 p_id, TimeStamp p_timeStamp, const QString &p_text)
 {
     Q_UNUSED(p_id);
+    qDebug() << "htmlToMarkdownData" << p_timeStamp;
     if (m_timeStamp == p_timeStamp && !p_text.isEmpty()) {
         QString text(p_text);
 
@@ -1045,8 +1049,10 @@ void MarkdownEditor::fetchImagesToLocalAndReplace(QString &p_text)
             continue;
         }
 
+        qDebug() << "fetching image link" << linkText;
+
         const QString imageTitle = purifyImageTitle(regExp.cap(1).trimmed());
-        const QString imageUrl = regExp.cap(2).trimmed();
+        QString imageUrl = regExp.cap(2).trimmed();
 
         const int maxUrlLength = 100;
         QString urlToDisplay(imageUrl);
@@ -1088,9 +1094,20 @@ void MarkdownEditor::fetchImagesToLocalAndReplace(QString &p_text)
             }
         } else {
             // Network path.
+            // Prepend the protocol if missing.
+            if (imageUrl.startsWith(QStringLiteral("//"))) {
+                imageUrl.prepend(QStringLiteral("https:"));
+            }
             QByteArray data = vte::Downloader::download(QUrl(imageUrl));
             if (!data.isEmpty()) {
-                tmpFile.reset(FileUtils::createTemporaryFile(info.suffix()));
+                // Prefer the suffix from the real data.
+                auto suffix = ImageUtils::guessImageSuffix(data);
+                if (suffix.isEmpty()) {
+                    suffix = info.suffix();
+                } else if (info.suffix() != suffix) {
+                    qWarning() << "guess a different suffix from image data" << info.suffix() << suffix;
+                }
+                tmpFile.reset(FileUtils::createTemporaryFile(suffix));
                 if (tmpFile->open() && tmpFile->write(data) > -1) {
                     srcImagePath = tmpFile->fileName();
                 }
@@ -1266,4 +1283,11 @@ void MarkdownEditor::setupTableHelper()
     m_tableHelper = new MarkdownTableHelper(this, this);
     connect(getHighlighter(), &vte::PegMarkdownHighlighter::tableBlocksUpdated,
             m_tableHelper, &MarkdownTableHelper::updateTableBlocks);
+}
+
+QRgb MarkdownEditor::getPreviewBackground() const
+{
+    auto th = theme();
+    const auto &fmt = th->editorStyle(vte::Theme::EditorStyle::Preview);
+    return fmt.m_backgroundColor;
 }

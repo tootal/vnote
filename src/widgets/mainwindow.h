@@ -3,12 +3,15 @@
 
 #include <QMainWindow>
 #include <QSharedPointer>
+#include <QBitArray>
 
 #include "toolbarhelper.h"
 #include "statusbarhelper.h"
 
 class QDockWidget;
 class QSystemTrayIcon;
+class QTimer;
+class QLabel;
 class QTextEdit;
 
 namespace vnotex
@@ -18,6 +21,8 @@ namespace vnotex
     class ViewArea;
     class Event;
     class OutlineViewer;
+    class LocationList;
+    class SearchPanel;
 
     enum { RESTART_EXIT_CODE = 1000 };
 
@@ -32,7 +37,7 @@ namespace vnotex
         MainWindow(const MainWindow &) = delete;
         void operator=(const MainWindow &) = delete;
 
-        void kickOffOnStart();
+        void kickOffOnStart(const QStringList &p_paths);
 
         void resetStateAndGeometry();
 
@@ -53,6 +58,14 @@ namespace vnotex
         void showMainWindow();
 
         void quitApp();
+
+        void openFiles(const QStringList &p_files);
+
+        LocationList *getLocationList() const;
+
+        void setLocationListVisible(bool p_visible);
+
+        void toggleLocationListVisible();
 
     signals:
         void mainWindowStarted();
@@ -77,6 +90,8 @@ namespace vnotex
 
         void exportNotes();
 
+        void showTips(const QString &p_message, int p_timeoutMilliseconds);
+
     private:
         // Index in m_docks.
         enum DockIndex
@@ -84,13 +99,13 @@ namespace vnotex
             NavigationDock = 0,
             OutlineDock,
             OutputDock,
+            SearchDock,
+            LocationListDock
         };
 
         void setupUI();
 
         void setupCentralWidget();
-
-        void setupNavigationToolBox();
 
         void setupOutlineViewer();
         
@@ -102,15 +117,27 @@ namespace vnotex
         
         void setupOutputDock();
 
+        void setupSearchDock();
+
+        void setupSearchPanel();
+
+        void setupLocationListDock();
+
+        void setupLocationList();
+
         void setupNotebookExplorer(QWidget *p_parent = nullptr);
 
         void setupDocks();
 
         void setupStatusBar();
 
+        void setupTipsArea();
+
+        void createTipsArea();
+
         void saveStateAndGeometry();
 
-        void loadStateAndGeometry();
+        void loadStateAndGeometry(bool p_stateOnly = false);
 
         // Used to test widget in development.
         void demoWidget();
@@ -124,6 +151,12 @@ namespace vnotex
         void setupShortcuts();
 
         void setupSystemTray();
+
+        void setTipsAreaVisible(bool p_visible);
+
+        void setupDockActivateShortcut(QDockWidget *p_dock, const QString &p_keys);
+
+        void setupSpellCheck();
 
         ToolBarHelper m_toolBarHelper;
 
@@ -141,6 +174,10 @@ namespace vnotex
         
         QTextEdit *m_outputViewer = nullptr;
 
+        LocationList *m_locationList = nullptr;
+
+        SearchPanel *m_searchPanel = nullptr;
+
         QVector<QDockWidget *> m_docks;
 
         bool m_layoutReset = false;
@@ -152,6 +189,12 @@ namespace vnotex
         Qt::WindowStates m_windowOldState = Qt::WindowMinimized;
 
         QSystemTrayIcon *m_trayIcon = nullptr;
+
+        QLabel *m_tipsLabel = nullptr;
+
+        QTimer *m_tipsTimer = nullptr;
+
+        QBitArray m_docksVisibilityBeforeExpand;
     };
 } // ns vnotex
 

@@ -70,30 +70,6 @@ ViewWindow::ViewWindow(QWidget *p_parent)
                     syncEditorFromBufferContent();
                 }
             });
-
-    connect(this, &ViewWindow::bufferChanged,
-            this, [this]() {
-                auto buffer = getBuffer();
-                if (buffer) {
-                    connect(buffer, &Buffer::modified,
-                            this, &ViewWindow::statusChanged);
-
-                    // To make it convenient to disconnect, do not connect directly to
-                    // the timer.
-                    connect(buffer, &Buffer::contentsChanged,
-                            this, [this]() {
-                                m_syncBufferContentTimer->start();
-                            });
-
-                    connect(buffer, &Buffer::nameChanged,
-                            this, &ViewWindow::nameChanged);
-
-                    connect(buffer, &Buffer::attachmentChanged,
-                            this, &ViewWindow::attachmentChanged);
-                }
-
-                handleBufferChangedInternal();
-            });
 }
 
 ViewWindow::~ViewWindow()
@@ -128,7 +104,7 @@ void ViewWindow::initIcons()
     }
 
     const auto &themeMgr = VNoteX::getInst().getThemeMgr();
-    const QString savedIconName("saved.svg");
+    const QString savedIconName("buffer.svg");
     const QString unsavedIconFg("base#icon#warning#fg");
     s_savedIcon = IconUtils::fetchIcon(themeMgr.getIconFile(savedIconName));
     s_modifiedIcon = IconUtils::fetchIcon(themeMgr.getIconFile(savedIconName),
@@ -140,7 +116,33 @@ Buffer *ViewWindow::getBuffer() const
     return m_buffer;
 }
 
-void ViewWindow::attachToBuffer(Buffer *p_buffer)
+void ViewWindow::handleBufferChanged(const QSharedPointer<FileOpenParameters> &p_paras)
+{
+    auto buffer = getBuffer();
+    if (buffer) {
+        connect(buffer, &Buffer::modified,
+                this, &ViewWindow::statusChanged);
+
+        // To make it convenient to disconnect, do not connect directly to
+        // the timer.
+        connect(buffer, &Buffer::contentsChanged,
+                this, [this]() {
+                    m_syncBufferContentTimer->start();
+                });
+
+        connect(buffer, &Buffer::nameChanged,
+                this, &ViewWindow::nameChanged);
+
+        connect(buffer, &Buffer::attachmentChanged,
+                this, &ViewWindow::attachmentChanged);
+    }
+
+    handleBufferChangedInternal(p_paras);
+
+    emit bufferChanged();
+}
+
+void ViewWindow::attachToBuffer(Buffer *p_buffer, const QSharedPointer<FileOpenParameters> &p_paras)
 {
     Q_ASSERT(p_buffer);
     Q_ASSERT(m_buffer != p_buffer);
@@ -150,7 +152,7 @@ void ViewWindow::attachToBuffer(Buffer *p_buffer)
     m_buffer = p_buffer;
     m_buffer->attachViewWindow(this);
 
-    emit bufferChanged();
+    handleBufferChanged(p_paras);
 
     if (m_buffer->getAttachViewWindowCount() == 1) {
         QTimer::singleShot(1000, this, &ViewWindow::checkBackupFileOfPreviousSession);
@@ -172,11 +174,11 @@ void ViewWindow::detachFromBuffer(bool p_quiet)
     m_buffer = nullptr;
 
     if (!p_quiet) {
-        emit bufferChanged();
+        handleBufferChanged(nullptr);
     }
 }
 
-const QIcon &ViewWindow::getIcon() const
+QIcon ViewWindow::getIcon() const
 {
     if (m_buffer) {
         return m_buffer->isModified() ? s_modifiedIcon : s_savedIcon;
@@ -407,7 +409,12 @@ QAction *ViewWindow::addAction(QToolBar *p_toolBar, ViewWindowToolBarHelper::Act
         connect(act, &QAction::triggered,
                 this, [this]() {
                     if (findAndReplaceWidgetVisible()) {
-                        hideFindAndReplaceWidget();
+                        const auto focusWidget = QApplication::focusWidget();
+                        if (m_findAndReplace == focusWidget || m_findAndReplace->isAncestorOf(focusWidget)) {
+                            hideFindAndReplaceWidget();
+                        } else {
+                            showFindAndReplaceWidget();
+                        }
                     } else {
                         showFindAndReplaceWidget();
                     }
@@ -431,6 +438,10 @@ QAction *ViewWindow::addAction(QToolBar *p_toolBar, ViewWindowToolBarHelper::Act
                 });
         break;
     }
+
+    default:
+        Q_ASSERT(false);
+        break;
     }
 
     return act;
@@ -530,20 +541,7 @@ bool ViewWindow::aboutToClose(bool p_force)
     return true;
 }
 
-ViewWindow::Mode ViewWindow::modeFromOpenParameters(const FileOpenParameters &p_paras)
-{
-    switch (p_paras.m_mode) {
-    case FileOpenParameters::Mode::Edit:
-        return ViewWindow::Mode::Edit;
-
-    case FileOpenParameters::Mode::Read:
-        Q_FALLTHROUGH();
-    default:
-        return ViewWindow::Mode::Read;
-    }
-}
-
-ViewWindow::Mode ViewWindow::getMode() const
+ViewWindowMode ViewWindow::getMode() const
 {
     return m_mode;
 }
@@ -595,12 +593,12 @@ void ViewWindow::discardChangesAndRead()
             return;
         }
     }
-    setMode(Mode::Read);
+    setMode(ViewWindowMode::Read);
 }
 
 bool ViewWindow::inModeCanInsert() const
 {
-    return m_mode == Mode::Edit || m_mode == Mode::FocusPreview || m_mode == Mode::FullPreview;
+    return m_mode == ViewWindowMode::Edit || m_mode == ViewWindowMode::FocusPreview || m_mode == ViewWindowMode::FullPreview;
 }
 
 void ViewWindow::handleTypeAction(TypeAction p_action)
@@ -757,12 +755,15 @@ int ViewWindow::checkFileMissingOrChangedOutside()
             return Failed;
         }
     } else if (m_buffer->checkFileChangedOutside()) {
-        int ret = MessageBoxHelper::questionSaveDiscardCancel(MessageBoxHelper::Warning,
-            tr("File is changed from outside (%1).").arg(m_buffer->getPath()),
-            tr("Do you want to save the buffer to the file to override, or discard the buffer?"),
-            tr("The file is changed from outside. Please choose to save the buffer to the file or "
-               "just discard the buffer and reload the file."),
-            this);
+        int ret = QMessageBox::Discard;
+        if (!(getWindowFlags() & WindowFlag::AutoReload)) {
+            ret = MessageBoxHelper::questionSaveDiscardCancel(MessageBoxHelper::Warning,
+                tr("File is changed from outside (%1).").arg(m_buffer->getPath()),
+                tr("Do you want to save the buffer to the file to override, or discard the buffer?"),
+                tr("The file is changed from outside. Please choose to save the buffer to the file or "
+                   "just discard the buffer and reload the file."),
+                this);
+        }
         switch (ret) {
         case QMessageBox::Save:
             if (!save(true)) {
@@ -829,7 +830,7 @@ bool ViewWindow::save(bool p_force)
 void ViewWindow::updateEditReadDiscardActionState(EditReadDiscardAction *p_act)
 {
     switch (getMode()) {
-    case Mode::Read:
+    case ViewWindowMode::Read:
         p_act->setState(BiAction::State::Default);
         break;
 
@@ -1057,7 +1058,7 @@ void ViewWindow::edit()
         return;
     }
 
-    setMode(Mode::Edit);
+    setMode(ViewWindowMode::Edit);
     setFocus();
 }
 
@@ -1072,7 +1073,7 @@ void ViewWindow::read(bool p_save)
 
     if (p_save) {
         if (save(false)) {
-            setMode(Mode::Read);
+            setMode(ViewWindowMode::Read);
         }
     } else {
         discardChangesAndRead();
@@ -1083,6 +1084,27 @@ void ViewWindow::read(bool p_save)
 QToolBar *ViewWindow::createToolBar(QWidget *p_parent)
 {
     auto toolBar = new QToolBar(p_parent);
-    toolBar->setProperty(PropertyDefs::s_viewWindowToolBar, true);
+    toolBar->setProperty(PropertyDefs::c_viewWindowToolBar, true);
     return toolBar;
+}
+
+ViewWindowSession ViewWindow::saveSession() const
+{
+    ViewWindowSession session;
+    if (m_buffer) {
+        session.m_bufferPath = m_buffer->getPath();
+        session.m_readOnly = m_buffer->isReadOnly();
+    }
+    session.m_viewWindowMode = getMode();
+    return session;
+}
+
+ViewWindow::WindowFlags ViewWindow::getWindowFlags() const
+{
+    return m_flags;
+}
+
+void ViewWindow::setWindowFlags(WindowFlags p_flags)
+{
+    m_flags = p_flags;
 }

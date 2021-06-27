@@ -14,6 +14,9 @@
 #include <utils/fileutils.h>
 #include <utils/pathutils.h>
 #include <exception.h>
+#include <core/configmgr.h>
+#include <core/editorconfig.h>
+#include <core/coreconfig.h>
 
 #include <utils/contentmediautils.h>
 
@@ -164,6 +167,10 @@ const QString VXNotebookConfigMgr::c_nodeConfigName = "vx.json";
 
 const QString VXNotebookConfigMgr::c_recycleBinFolderName = "vx_recycle_bin";
 
+bool VXNotebookConfigMgr::s_initialized = false;
+
+QVector<QRegExp> VXNotebookConfigMgr::s_externalNodeExcludePatterns;
+
 VXNotebookConfigMgr::VXNotebookConfigMgr(const QString &p_name,
                                          const QString &p_displayName,
                                          const QString &p_description,
@@ -172,6 +179,17 @@ VXNotebookConfigMgr::VXNotebookConfigMgr(const QString &p_name,
     : BundleNotebookConfigMgr(p_backend, p_parent),
       m_info(p_name, p_displayName, p_description)
 {
+    if (!s_initialized) {
+        s_initialized = true;
+
+        const auto &patterns = ConfigMgr::getInst().getCoreConfig().getExternalNodeExcludePatterns();
+        s_externalNodeExcludePatterns.reserve(patterns.size());
+        for (const auto &pat : patterns) {
+            if (!pat.isEmpty()) {
+                s_externalNodeExcludePatterns.push_back(QRegExp(pat, Qt::CaseInsensitive, QRegExp::Wildcard));
+            }
+        }
+    }
 }
 
 QString VXNotebookConfigMgr::getName() const
@@ -255,7 +273,7 @@ void VXNotebookConfigMgr::createRecycleBinNode(const QSharedPointer<Node> &p_roo
 {
     Q_ASSERT(p_root->isRoot());
 
-    auto node = newNode(p_root.data(), Node::Flag::Container, c_recycleBinFolderName);
+    auto node = newNode(p_root.data(), Node::Flag::Container, c_recycleBinFolderName, "");
     node->setUse(Node::Use::RecycleBin);
     markNodeReadOnly(node.data());
 }
@@ -358,7 +376,8 @@ void VXNotebookConfigMgr::loadFolderNode(Node *p_node, const NodeConfig &p_confi
 
 QSharedPointer<Node> VXNotebookConfigMgr::newNode(Node *p_parent,
                                                   Node::Flags p_flags,
-                                                  const QString &p_name)
+                                                  const QString &p_name,
+                                                  const QString &p_content)
 {
     Q_ASSERT(p_parent && p_parent->isContainer() && !p_name.isEmpty());
 
@@ -366,7 +385,7 @@ QSharedPointer<Node> VXNotebookConfigMgr::newNode(Node *p_parent,
 
     if (p_flags & Node::Flag::Content) {
         Q_ASSERT(!(p_flags & Node::Flag::Container));
-        node = newFileNode(p_parent, p_name, true, NodeParameters());
+        node = newFileNode(p_parent, p_name, p_content, true, NodeParameters());
     } else {
         node = newFolderNode(p_parent, p_name, true, NodeParameters());
     }
@@ -385,7 +404,7 @@ QSharedPointer<Node> VXNotebookConfigMgr::addAsNode(Node *p_parent,
     QSharedPointer<Node> node;
     if (p_flags & Node::Flag::Content) {
         Q_ASSERT(!(p_flags & Node::Flag::Container));
-        node = newFileNode(p_parent, p_name, false, p_paras);
+        node = newFileNode(p_parent, p_name, "", false, p_paras);
     } else {
         node = newFolderNode(p_parent, p_name, false, p_paras);
     }
@@ -412,6 +431,7 @@ QSharedPointer<Node> VXNotebookConfigMgr::copyAsNode(Node *p_parent,
 
 QSharedPointer<Node> VXNotebookConfigMgr::newFileNode(Node *p_parent,
                                                       const QString &p_name,
+                                                      const QString &p_content,
                                                       bool p_create,
                                                       const NodeParameters &p_paras)
 {
@@ -429,7 +449,7 @@ QSharedPointer<Node> VXNotebookConfigMgr::newFileNode(Node *p_parent,
 
     // Write empty file.
     if (p_create) {
-        getBackend()->writeFile(node->fetchPath(), QString());
+        getBackend()->writeFile(node->fetchPath(), p_content);
         node->setExists(true);
     } else {
         node->setExists(getBackend()->existsFile(node->fetchPath()));
@@ -803,8 +823,12 @@ QString VXNotebookConfigMgr::fetchNodeAttachmentFolder(const QString &p_nodePath
 
 bool VXNotebookConfigMgr::isBuiltInFile(const Node *p_node, const QString &p_name) const
 {
+    static const QString backupFileExtension = ConfigMgr::getInst().getEditorConfig().getBackupFileExtension().toLower();
+
     const auto name = p_name.toLower();
-    if (name == c_nodeConfigName || name == "_vnote.json") {
+    if (name == c_nodeConfigName
+        || name == QStringLiteral("_vnote.json")
+        || name.endsWith(backupFileExtension)) {
         return true;
     }
     return BundleNotebookConfigMgr::isBuiltInFile(p_node, p_name);
@@ -921,6 +945,10 @@ QVector<QSharedPointer<ExternalNode>> VXNotebookConfigMgr::fetchExternalChildren
                 continue;
             }
 
+            if (isExcludedFromExternalNode(folder)) {
+                continue;
+            }
+
             if (p_node->containsContainerChild(folder)) {
                 continue;
             }
@@ -937,6 +965,10 @@ QVector<QSharedPointer<ExternalNode>> VXNotebookConfigMgr::fetchExternalChildren
                 continue;
             }
 
+            if (isExcludedFromExternalNode(file)) {
+                continue;
+            }
+
             if (p_node->containsContentChild(file)) {
                 continue;
             }
@@ -948,7 +980,19 @@ QVector<QSharedPointer<ExternalNode>> VXNotebookConfigMgr::fetchExternalChildren
     return externalNodes;
 }
 
-void VXNotebookConfigMgr::reloadNode(Node *p_node)
+bool VXNotebookConfigMgr::isExcludedFromExternalNode(const QString &p_name) const
 {
-    // TODO.
+    for (const auto &regExp : s_externalNodeExcludePatterns) {
+        if (regExp.exactMatch(p_name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool VXNotebookConfigMgr::checkNodeExists(Node *p_node)
+{
+    bool exists = getBackend()->exists(p_node->fetchPath());
+    p_node->setExists(exists);
+    return exists;
 }

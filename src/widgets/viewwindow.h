@@ -6,8 +6,10 @@
 #include <QSharedPointer>
 
 #include <buffer/buffer.h>
+#include <core/global.h>
 
 #include "viewwindowtoolbarhelper.h"
+#include "viewwindowsession.h"
 
 class QVBoxLayout;
 class QTimer;
@@ -28,14 +30,12 @@ namespace vnotex
     {
         Q_OBJECT
     public:
-        enum Mode
+        enum WindowFlag
         {
-            Read,
-            Edit,
-            FullPreview,
-            FocusPreview,
-            Invalid
+            None = 0,
+            AutoReload = 0x1
         };
+        Q_DECLARE_FLAGS(WindowFlags, WindowFlag);
 
         explicit ViewWindow(QWidget *p_parent = nullptr);
 
@@ -43,11 +43,14 @@ namespace vnotex
 
         Buffer *getBuffer() const;
 
-        void attachToBuffer(Buffer *p_buffer);
+        void attachToBuffer(Buffer *p_buffer, const QSharedPointer<FileOpenParameters> &p_paras);
 
         void detachFromBuffer(bool p_quiet = false);
 
-        virtual const QIcon &getIcon() const;
+        // User request to open the buffer attached to this ViewWindow again.
+        virtual void openTwice(const QSharedPointer<FileOpenParameters> &p_paras) = 0;
+
+        virtual QIcon getIcon() const;
 
         virtual QString getName() const;
 
@@ -68,13 +71,18 @@ namespace vnotex
         // Return true if it is OK to proceed.
         bool aboutToClose(bool p_force);
 
-        ViewWindow::Mode getMode() const;
-        virtual void setMode(Mode p_mode) = 0;
+        ViewWindowMode getMode() const;
+        virtual void setMode(ViewWindowMode p_mode) = 0;
 
         virtual QSharedPointer<OutlineProvider> getOutlineProvider();
 
         // Called by upside.
         void checkFileMissingOrChangedOutsidePeriodically();
+
+        virtual ViewWindowSession saveSession() const;
+
+        WindowFlags getWindowFlags() const;
+        void setWindowFlags(WindowFlags p_flags);
 
     public slots:
         virtual void handleEditorConfigChange() = 0;
@@ -134,7 +142,7 @@ namespace vnotex
 
     protected slots:
         // Handle current buffer change.
-        virtual void handleBufferChangedInternal() = 0;
+        virtual void handleBufferChangedInternal(const QSharedPointer<FileOpenParameters> &p_paras) = 0;
 
         // Handle all kinds of type action.
         virtual void handleTypeAction(TypeAction p_action);
@@ -218,8 +226,6 @@ namespace vnotex
 
         void read(bool p_save);
 
-        static ViewWindow::Mode modeFromOpenParameters(const FileOpenParameters &p_paras);
-
         static QToolBar *createToolBar(QWidget *p_parent = nullptr);
 
         // The revision of the buffer of the last sync content.
@@ -229,7 +235,7 @@ namespace vnotex
         // Subclass should maintain it.
         int m_editorConfigRevision = 0;
 
-        Mode m_mode = Mode::Invalid;
+        ViewWindowMode m_mode = ViewWindowMode::Invalid;
 
         // Managed by QObject.
         FindAndReplaceWidget *m_findAndReplace = nullptr;
@@ -282,6 +288,8 @@ namespace vnotex
 
         void findNextOnLastFind(bool p_forward = true);
 
+        void handleBufferChanged(const QSharedPointer<FileOpenParameters> &p_paras);
+
         static ViewWindow::TypeAction toolBarActionToTypeAction(ViewWindowToolBarHelper::Action p_action);
 
         Buffer *m_buffer = nullptr;
@@ -322,9 +330,13 @@ namespace vnotex
 
         EditReadDiscardAction *m_editReadDiscardAct = nullptr;
 
+        WindowFlags m_flags = WindowFlag::None;
+
         static QIcon s_savedIcon;
         static QIcon s_modifiedIcon;
     };
 } // ns vnotex
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(vnotex::ViewWindow::WindowFlags)
 
 #endif // VIEWWINDOW_H

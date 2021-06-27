@@ -3,6 +3,9 @@
 
 #include <QSharedPointer>
 #include <QJsonObject>
+#include <QJsonArray>
+#include <QBitArray>
+#include <QDataStream>
 
 namespace vnotex
 {
@@ -80,6 +83,43 @@ namespace vnotex
             return read(p_default, p_user, p_key).toString();
         }
 
+        static QStringList readStringList(const QJsonObject &p_default,
+                                          const QJsonObject &p_user,
+                                          const QString &p_key)
+        {
+            auto arr = read(p_default, p_user, p_key).toArray();
+            QStringList res;
+            res.reserve(arr.size());
+            for (const auto &ele : arr) {
+                res.push_back(ele.toString());
+            }
+            return res;
+        }
+
+        static QStringList readStringList(const QJsonObject &p_obj,
+                                          const QString &p_key)
+        {
+            auto arr = p_obj.value(p_key).toArray();
+            QStringList res;
+            res.reserve(arr.size());
+            for (const auto &ele : arr) {
+                res.push_back(ele.toString());
+            }
+            return res;
+        }
+
+        static void writeStringList(QJsonObject &p_obj,
+                                    const QString &p_key,
+                                    const QStringList &p_list)
+        {
+            QJsonArray arr;
+            for (const auto &ele : p_list) {
+                arr.push_back(ele);
+            }
+
+            p_obj[p_key] = arr;
+        }
+
         static QString readString(const QJsonObject &p_obj,
                                   const QString &p_key)
         {
@@ -97,6 +137,34 @@ namespace vnotex
                                    const QByteArray &p_bytes)
         {
             p_obj.insert(p_key, QLatin1String(p_bytes.toBase64()));
+        }
+
+        static QBitArray readBitArray(const QJsonObject &p_obj,
+                                      const QString &p_key)
+        {
+            auto bytes = readByteArray(p_obj, p_key);
+            if (bytes.isEmpty()) {
+                return QBitArray();
+            }
+
+            QDataStream ds(bytes);
+            ds.setVersion(QDataStream::Qt_5_12);
+
+            QBitArray bits;
+            ds >> bits;
+            return bits;
+        }
+
+        static void writeBitArray(QJsonObject &p_obj,
+                                  const QString &p_key,
+                                  const QBitArray &p_bits)
+        {
+            QByteArray bytes;
+            QDataStream ds(&bytes, QIODevice::WriteOnly);
+            ds.setVersion(QDataStream::Qt_5_12);
+            ds << p_bits;
+
+            writeByteArray(p_obj, p_key, bytes);
         }
 
         static bool readBool(const QJsonObject &p_default,
@@ -140,14 +208,20 @@ namespace vnotex
         }
 
         template <typename T>
-        static void updateConfig(T &p_cur,
-                                 const T &p_new,
-                                 IConfig *p_config)
+        static void updateConfig(T &p_cur, const T &p_new, IConfig *p_config)
         {
             if (p_cur == p_new) {
                 return;
             }
 
+            ++p_config->m_revision;
+            p_cur = p_new;
+            p_config->writeToSettings();
+        }
+
+        template <typename T>
+        static void updateConfigWithoutCheck(T &p_cur, const T &p_new, IConfig *p_config)
+        {
             ++p_config->m_revision;
             p_cur = p_new;
             p_config->writeToSettings();

@@ -24,7 +24,7 @@
 using namespace vnotex;
 
 #ifndef QT_NO_DEBUG
-#define VX_DEBUG_WEB
+    #define VX_DEBUG_WEB
 #endif
 
 const QString ConfigMgr::c_orgName = "VNote";
@@ -71,7 +71,6 @@ ConfigMgr::ConfigMgr(QObject *p_parent)
 
 ConfigMgr::~ConfigMgr()
 {
-
 }
 
 void ConfigMgr::locateConfigFolder()
@@ -219,6 +218,12 @@ void ConfigMgr::checkAppConfig()
     FileUtils::copyDir(extraDataRoot + QStringLiteral("/web"),
                        appConfigDir.filePath(QStringLiteral("web")));
 
+    // Copy dicts.
+    qApp->processEvents();
+    splash->showMessage("Copying dicts");
+    FileUtils::copyDir(extraDataRoot + QStringLiteral("/dicts"),
+                       appConfigDir.filePath(QStringLiteral("dicts")));
+
     // Main config file.
     FileUtils::copyFile(getConfigFilePath(Source::Default), appConfigDir.filePath(c_configFileName));
 
@@ -229,7 +234,7 @@ QString ConfigMgr::getConfigFilePath(Source p_src) const
     QString configPath;
     switch (p_src) {
     case Source::Default:
-        configPath = QStringLiteral(":/vnotex/data/core/") + c_configFileName;
+        configPath = getDefaultConfigFilePath();
         break;
 
     case Source::App:
@@ -255,9 +260,13 @@ QString ConfigMgr::getConfigFilePath(Source p_src) const
     return configPath;
 }
 
+QString ConfigMgr::getDefaultConfigFilePath()
+{
+    return QStringLiteral(":/vnotex/data/core/") + c_configFileName;
+}
+
 QSharedPointer<ConfigMgr::Settings> ConfigMgr::getSettings(Source p_src) const
 {
-
     return ConfigMgr::Settings::fromFile(getConfigFilePath(p_src));
 }
 
@@ -364,8 +373,31 @@ QString ConfigMgr::getAppSyntaxHighlightingFolder() const
 
 QString ConfigMgr::getUserSyntaxHighlightingFolder() const
 {
-    return PathUtils::concatenateFilePath(m_userConfigFolderPath,
-                                          QStringLiteral("syntax-highlighting"));
+    auto folderPath = PathUtils::concatenateFilePath(m_userConfigFolderPath,
+                                                     QStringLiteral("syntax-highlighting"));
+    QDir().mkpath(folderPath);
+    return folderPath;
+}
+
+QString ConfigMgr::getAppDictsFolder() const
+{
+    return PathUtils::concatenateFilePath(m_appConfigFolderPath,
+                                          QStringLiteral("dicts"));
+}
+
+QString ConfigMgr::getUserDictsFolder() const
+{
+    auto folderPath = PathUtils::concatenateFilePath(m_userConfigFolderPath,
+                                                     QStringLiteral("dicts"));
+    QDir().mkpath(folderPath);
+    return folderPath;
+}
+
+QString ConfigMgr::getUserTemplateFolder() const
+{
+    auto folderPath = PathUtils::concatenateFilePath(m_userConfigFolderPath, QStringLiteral("templates"));
+    QDir().mkpath(folderPath);
+    return folderPath;
 }
 
 QString ConfigMgr::getUserOrAppFile(const QString &p_filePath) const
@@ -444,4 +476,19 @@ QString ConfigMgr::getDocumentOrHomePath()
     }
 
     return docHomePath;
+}
+
+QString ConfigMgr::getApplicationVersion()
+{
+    static QString appVersion;
+
+    if (appVersion.isEmpty()) {
+        auto defaultSettings = ConfigMgr::Settings::fromFile(getDefaultConfigFilePath());
+        const auto &defaultObj = defaultSettings->getJson();
+
+        auto metaDataObj = defaultObj.value(QStringLiteral("metadata")).toObject();
+        appVersion = metaDataObj.value(QStringLiteral("version")).toString();
+    }
+
+    return appVersion;
 }

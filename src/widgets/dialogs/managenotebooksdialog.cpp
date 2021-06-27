@@ -19,6 +19,7 @@
 #include "exception.h"
 #include "../propertydefs.h"
 #include "../listwidget.h"
+#include <core/configmgr.h>
 
 using namespace vnotex;
 
@@ -69,8 +70,8 @@ void ManageNotebooksDialog::setupUI()
                     closeNotebook(m_notebookInfoWidget->getNotebook());
                 });
 
-        m_deleteNotebookBtn = new QPushButton(tr("Delete"), infoWidget);
-        WidgetUtils::setPropertyDynamically(m_deleteNotebookBtn, PropertyDefs::s_dangerButton, true);
+        m_deleteNotebookBtn = new QPushButton(tr("Delete (DANGER)"), infoWidget);
+        WidgetUtils::setPropertyDynamically(m_deleteNotebookBtn, PropertyDefs::c_dangerButton, true);
         btnLayout->addWidget(m_deleteNotebookBtn);
         connect(m_deleteNotebookBtn, &QPushButton::clicked,
                 this, [this]() {
@@ -162,8 +163,12 @@ void ManageNotebooksDialog::loadNotebooks(const Notebook *p_notebook)
         }
     }
 
-    if (!hasCurrentItem && !notebooks.isEmpty()) {
-        m_notebookList->setCurrentRow(0);
+    if (!hasCurrentItem) {
+        if (notebooks.isEmpty()) {
+            selectNotebook(nullptr);
+        } else {
+            m_notebookList->setCurrentRow(0);
+        }
     }
 }
 
@@ -171,6 +176,10 @@ void ManageNotebooksDialog::selectNotebook(Notebook *p_notebook)
 {
     m_notebookInfoWidget->setNotebook(p_notebook);
     setChangesUnsaved(false);
+
+    // Update buttons.
+    m_closeNotebookBtn->setEnabled(p_notebook);
+    m_deleteNotebookBtn->setEnabled(p_notebook);
 
     WidgetUtils::resizeToHideScrollBarLater(m_infoScrollArea, false, true);
 }
@@ -216,9 +225,12 @@ bool ManageNotebooksDialog::saveChangesToNotebook()
 
 void ManageNotebooksDialog::closeNotebook(const Notebook *p_notebook)
 {
-    Q_ASSERT(p_notebook);
+    if (!p_notebook) {
+        return;
+    }
+
     int ret = MessageBoxHelper::questionOkCancel(MessageBoxHelper::Question,
-                                                 tr("Close notebook %1?")
+                                                 tr("Close notebook (%1)?")
                                                    .arg(p_notebook->getName()),
                                                  tr("The notebook could be imported again later."),
                                                  tr("Notebook location: %1").arg(p_notebook->getRootFolderAbsolutePath()),
@@ -243,12 +255,17 @@ void ManageNotebooksDialog::closeNotebook(const Notebook *p_notebook)
 
 void ManageNotebooksDialog::removeNotebook(const Notebook *p_notebook)
 {
-    Q_ASSERT(p_notebook);
+    if (!p_notebook) {
+        return;
+    }
+
     int ret = MessageBoxHelper::questionOkCancel(MessageBoxHelper::Warning,
-                                                 tr("Delete notebook %1 from disk?").arg(p_notebook->getName()),
-                                                 tr("It will delete all files belonging to this notebook from disk. "
+                                                 tr("Delete notebook (%1) from disk?").arg(p_notebook->getName()),
+                                                 tr("CALM DOWN! CALM DOWN! CALM DOWN! It will delete all files belonging to this notebook from disk. "
                                                     "It is dangerous since it will bypass system's recycle bin!"),
-                                                 tr("Notebook location: %1").arg(p_notebook->getRootFolderAbsolutePath()),
+                                                 tr("Notebook location: %1\nUse the \"Close\" button if you just want to remove it from %2.")
+                                                 .arg(p_notebook->getRootFolderAbsolutePath())
+                                                 .arg(ConfigMgr::c_appName),
                                                  this);
     if (ret != QMessageBox::Ok) {
         return;

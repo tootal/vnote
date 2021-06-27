@@ -4,6 +4,7 @@ using namespace vnotex;
 
 #define READINT(key) readInt(appObj, userObj, (key))
 #define READBOOL(key) readBool(appObj, userObj, (key))
+#define READSTRLIST(key) readStringList(appObj, userObj, (key))
 
 WidgetConfig::WidgetConfig(ConfigMgr *p_mgr, IConfig *p_topConfig)
     : IConfig(p_mgr, p_topConfig)
@@ -28,6 +29,8 @@ void WidgetConfig::init(const QJsonObject &p_app,
     m_nodeExplorerRecycleBinNodeVisible = READBOOL(QStringLiteral("node_explorer_recycle_bin_node_visible"));
     m_nodeExplorerExternalFilesVisible = READBOOL(QStringLiteral("node_explorer_external_files_visible"));
     m_nodeExplorerAutoImportExternalFilesEnabled = READBOOL(QStringLiteral("node_explorer_auto_import_external_files_enabled"));
+    m_searchPanelAdvancedSettingsVisible = READBOOL(QStringLiteral("search_panel_advanced_settings_visible"));
+    m_mainWindowKeepDocksExpandingContentArea = READSTRLIST(QStringLiteral("main_window_keep_docks_expanding_content_area"));
 }
 
 QJsonObject WidgetConfig::toJson() const
@@ -39,6 +42,10 @@ QJsonObject WidgetConfig::toJson() const
     obj[QStringLiteral("node_explorer_recycle_bin_node_visible")] = m_nodeExplorerRecycleBinNodeVisible;
     obj[QStringLiteral("node_explorer_external_files_visible")] = m_nodeExplorerExternalFilesVisible;
     obj[QStringLiteral("node_explorer_auto_import_external_files_enabled")] = m_nodeExplorerAutoImportExternalFilesEnabled;
+    obj[QStringLiteral("search_panel_advanced_settings_visible")] = m_searchPanelAdvancedSettingsVisible;
+    writeStringList(obj,
+                    QStringLiteral("main_window_keep_docks_expanding_content_area"),
+                    m_mainWindowKeepDocksExpandingContentArea);
     return obj;
 }
 
@@ -100,4 +107,24 @@ bool WidgetConfig::getNodeExplorerAutoImportExternalFilesEnabled() const
 void WidgetConfig::setNodeExplorerAutoImportExternalFilesEnabled(bool p_enabled)
 {
     updateConfig(m_nodeExplorerAutoImportExternalFilesEnabled, p_enabled, this);
+}
+
+bool WidgetConfig::isSearchPanelAdvancedSettingsVisible() const
+{
+    return m_searchPanelAdvancedSettingsVisible;
+}
+
+void WidgetConfig::setSearchPanelAdvancedSettingsVisible(bool p_visible)
+{
+    updateConfig(m_searchPanelAdvancedSettingsVisible, p_visible, this);
+}
+
+const QStringList &WidgetConfig::getMainWindowKeepDocksExpandingContentArea() const
+{
+    return m_mainWindowKeepDocksExpandingContentArea;
+}
+
+void WidgetConfig::setMainWindowKeepDocksExpandingContentArea(const QStringList &p_docks)
+{
+    updateConfig(m_mainWindowKeepDocksExpandingContentArea, p_docks, this);
 }

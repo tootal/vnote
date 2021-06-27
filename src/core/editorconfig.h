@@ -87,7 +87,14 @@ namespace vnotex
 
         const QString &getShortcut(Shortcut p_shortcut) const;
 
+        bool isSpellCheckAutoDetectLanguageEnabled() const;
+
+        const QString &getSpellCheckDefaultDictionary() const;
+        void setSpellCheckDefaultDictionary(const QString &p_dict);
+
     private:
+        friend class MainConfig;
+
         void loadCore(const QJsonObject &p_app, const QJsonObject &p_user);
 
         QJsonObject saveCore() const;
@@ -100,7 +107,7 @@ namespace vnotex
         AutoSavePolicy stringToAutoSavePolicy(const QString &p_str) const;
 
         // Icon size of editor tool bar.
-        int m_toolBarIconSize = 14;
+        int m_toolBarIconSize = 16;
 
         QString m_shortcuts[Shortcut::MaxShortcut];
 
@@ -116,6 +123,10 @@ namespace vnotex
         QSharedPointer<TextEditorConfig> m_textEditorConfig;
 
         QScopedPointer<MarkdownEditorConfig> m_markdownEditorConfig;
+
+        bool m_spellCheckAutoDetectLanguageEnabled = false;
+
+        QString m_spellCheckDefaultDictionary;
     };
 }
 

@@ -36,10 +36,16 @@ namespace vnotex
         bool getNodeExplorerAutoImportExternalFilesEnabled() const;
         void setNodeExplorerAutoImportExternalFilesEnabled(bool p_enabled);
 
+        bool isSearchPanelAdvancedSettingsVisible() const;
+        void setSearchPanelAdvancedSettingsVisible(bool p_visible);
+
+        const QStringList &getMainWindowKeepDocksExpandingContentArea() const;
+        void setMainWindowKeepDocksExpandingContentArea(const QStringList &p_docks);
+
     private:
         int m_outlineAutoExpandedLevel = 6;
 
-        FindOptions m_findAndReplaceOptions = FindOption::None;
+        FindOptions m_findAndReplaceOptions = FindOption::FindNone;
 
         int m_nodeExplorerViewOrder = 0;
 
@@ -48,6 +54,11 @@ namespace vnotex
         bool m_nodeExplorerExternalFilesVisible = true;
 
         bool m_nodeExplorerAutoImportExternalFilesEnabled = true;
+
+        bool m_searchPanelAdvancedSettingsVisible = true;
+
+        // Object name of those docks that should be kept when expanding content area.
+        QStringList m_mainWindowKeepDocksExpandingContentArea;
     };
 }
 
